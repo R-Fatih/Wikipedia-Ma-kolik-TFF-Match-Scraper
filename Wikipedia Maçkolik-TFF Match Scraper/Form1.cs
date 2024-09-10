@@ -1,4 +1,6 @@
-﻿using System;
+﻿using IniParser.Model;
+using IniParser;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -107,6 +109,16 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
             var ass = document.DocumentNode.SelectNodes(list[12]);
             try
             {
+				match.HomeMS = Convert.ToInt32(hs[0].InnerText);
+				match.AwayMS = Convert.ToInt32(ass[0].InnerText);
+			}
+            catch (Exception)
+            {
+
+
+            }
+            try
+            {
 
                 match.Referee = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r1[0].InnerText.Substring(0, (r1[0].InnerText.IndexOf("("))).ToLower());
                 match.Referee2 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r2[0].InnerText.Substring(0, (r2[0].InnerText.IndexOf("("))).ToLower());
@@ -115,8 +127,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 match.Referee5 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r5[0].InnerText.Substring(0, (r5[0].InnerText.IndexOf("("))).ToLower());
                 match.Referee6 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r6[0].InnerText.Substring(0, (r6[0].InnerText.IndexOf("("))).ToLower());
                 match.Referee7 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r7[0].InnerText.Substring(0, (r7[0].InnerText.IndexOf("("))).ToLower());
-				match.HomeMS = Convert.ToInt32(hs[0].InnerText);
-				match.AwayMS = Convert.ToInt32(ass[0].InnerText);
+				
 			}
             catch (Exception)
             {
@@ -163,10 +174,19 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 
         private async void button1_Click(object sender, EventArgs e)
         {
+			var parser = new FileIniDataParser();
+			IniData data = parser.ReadFile("settings.ini");
 
-            string[] strings = File.ReadAllLines("1.txt");
-            string start = File.ReadAllText("init.txt");
-            for (int i =Convert.ToInt32( start); i < strings.Length; i++)
+			string setting1 = data["Settings"]["VAR"];
+			string setting2 = data["Settings"]["Hafta"];
+			string setting3 = data["Settings"]["Start"];
+			string setting4 = data["Settings"]["Finish"];
+			string setting5 = data["Settings"]["File"];
+
+
+			string[] strings = File.ReadAllLines(setting5);
+
+            for (int i =Convert.ToInt32(setting3); i < Convert.ToInt32(setting4); i++)
             {
                 await Console.Out.WriteLineAsync(i.ToString());
 
@@ -198,8 +218,8 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 var matchdetails = new MatchDetails
                 {
                     MDetail = adres != null ?"|"+ teams.Where(a => a.TFFId == match.HomeId).ToList()[0].KısaKodu + "-" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].KısaKodu : "",
-                    BesinciHakem = match.Referee5 + ", " + match.Referee6 + ", " + match.Referee7,
-                    DorduncuHakem = match.Referee4,
+					BesinciHakem = match.Referee5 + ", " + match.Referee6 + (match.Referee7 != null ? ", " + match.Referee7 : ""),
+					DorduncuHakem = match.Referee4,
                     Hakem = match.Referee,
                     YardimciHakemler = match.Referee2 + ", " + match.Referee3,
                     Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
@@ -212,10 +232,10 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     Yer=adres!=null? "[[" + stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
                     Goller1 = richTextBoxes[0].Text,
                     Goller2 = richTextBoxes[1].Text,
-                    Tur=((i/10)+1).ToString()
+                    Tur=((i/Convert.ToInt32(setting2))+1).ToString()
                 };
-                File.WriteAllText(matchdetails.MDetail.Replace("|","")+".txt",matchdetails.ToString());
-                richTextBox1.AppendText(matchdetails.ToString()+"\n\n");
+                File.WriteAllText(matchdetails.MDetail.Replace("|","")+".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString():matchdetails.ToString2());
+                richTextBox1.AppendText((Convert.ToBoolean(setting1)? matchdetails.ToString():matchdetails.ToString2())+"\n\n");
 
             }
         }
