@@ -234,7 +234,9 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     Goller2 = richTextBoxes[1].Text,
                     Tur=((i/Convert.ToInt32(setting2))+1).ToString()
                 };
-                File.WriteAllText(matchdetails.MDetail.Replace("|","")+".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString():matchdetails.ToString2());
+                
+
+				File.WriteAllText(setting5.Replace(".txt","")+"\\"+matchdetails.MDetail.Replace("|","")+".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString():matchdetails.ToString2());
                 richTextBox1.AppendText((Convert.ToBoolean(setting1)? matchdetails.ToString():matchdetails.ToString2())+"\n\n");
 
             }
