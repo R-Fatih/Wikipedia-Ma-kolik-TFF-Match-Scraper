@@ -185,61 +185,63 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 
 
 			string[] strings = File.ReadAllLines(setting5);
-
-            for (int i =Convert.ToInt32(setting3); i < Convert.ToInt32(setting4); i++)
+            await Task.Run(async () =>
             {
-                await Console.Out.WriteLineAsync(i.ToString());
-
-                adres = strings[i].Split(',')[0];
-                maçkolik = strings[i].Split(',')[1];
-
-                //Console.WriteLine("adres");
-               // Console.WriteLine(string.IsNullOrWhiteSpace(adres));
-                StadiumName playerName = new StadiumName();
-             StadiumPlace stadiumPlace = new StadiumPlace();
-                HttpClient http = new HttpClient();
-                Match match = null;
-                if (adres != null)
+                for (int i = Convert.ToInt32(setting3); i < Convert.ToInt32(setting4); i++)
                 {
-                    match = await Scrape(adres);
+                    await Console.Out.WriteLineAsync(i.ToString());
+
+                    adres = strings[i].Split(',')[0];
+                    maçkolik = strings[i].Split(',')[1];
+
+                    //Console.WriteLine("adres");
+                    // Console.WriteLine(string.IsNullOrWhiteSpace(adres));
+                    StadiumName playerName = new StadiumName();
+                    StadiumPlace stadiumPlace = new StadiumPlace();
+                    HttpClient http = new HttpClient();
+                    Match match = null;
+                    if (adres != null)
+                    {
+                        match = await Scrape(adres);
+
+                    }
+                    else
+                    {
+                        match = new Match();
+                    }
+                    Team[] teams = http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json").Result;
+                    //Console.WriteLine("burdan maçkolk" + maçkolik);
+                    EventDetails eventDetails = new EventDetails();
+                    List<RichTextBox> richTextBoxes = eventDetails.Events(maçkolik, richTextBox2);
+                    // Console.WriteLine("burdan" + richTextBoxes[0].Text);
+                    //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
+                    var matchhh = match;
+                    var matchdetails = new MatchDetails
+                    {
+                        MDetail = adres != null ? "|" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].KısaKodu + "-" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].KısaKodu : "",
+                        BesinciHakem = match.Referee5 + ", " + match.Referee6 + (match.Referee7 != null ? ", " + match.Referee7 : ""),
+                        DorduncuHakem = match.Referee4,
+                        Hakem = match.Referee,
+                        YardimciHakemler = match.Referee2 + ", " + match.Referee3,
+                        Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
+                        Takim1 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].TakımAdı + "]]" : "",
+                        Takim2 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].TakımAdı + "]]" : "",
+                        Sonuc = match.HomeMS + " - " + match.AwayMS,
+                        Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
+                        Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
+                        Stadyum = adres != null ? "[[" + playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                        Yer = adres != null ? "[[" + stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                        Goller1 = richTextBoxes[0].Text,
+                        Goller2 = richTextBoxes[1].Text,
+                        Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()
+                    };
+
+
+                    File.WriteAllText(setting5.Replace(".txt", "") + "\\" + matchdetails.MDetail.Replace("|", "") + ".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2());
+                    richTextBox1.AppendText((Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2()) + "\n\n");
 
                 }
-                else
-                {
-                    match = new Match();
-                }
-                Team[] teams = http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json").Result;
-                //Console.WriteLine("burdan maçkolk" + maçkolik);
-                EventDetails eventDetails = new EventDetails();
-                List<RichTextBox> richTextBoxes = eventDetails.Events(maçkolik,richTextBox2);
-               // Console.WriteLine("burdan" + richTextBoxes[0].Text);
-              //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
-                var matchhh=match;
-                var matchdetails = new MatchDetails
-                {
-                    MDetail = adres != null ?"|"+ teams.Where(a => a.TFFId == match.HomeId).ToList()[0].KısaKodu + "-" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].KısaKodu : "",
-					BesinciHakem = match.Referee5 + ", " + match.Referee6 + (match.Referee7 != null ? ", " + match.Referee7 : ""),
-					DorduncuHakem = match.Referee4,
-                    Hakem = match.Referee,
-                    YardimciHakemler = match.Referee2 + ", " + match.Referee3,
-                    Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
-                    Takim1 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].TakımAdı + "]]" : "",
-                    Takim2 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].TakımAdı + "]]" : "",
-                    Sonuc = match.HomeMS + " - " + match.AwayMS,
-                    Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
-                    Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
-                    Stadyum = adres != null ? "[[" + playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "" ,
-                    Yer=adres!=null? "[[" + stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
-                    Goller1 = richTextBoxes[0].Text,
-                    Goller2 = richTextBoxes[1].Text,
-                    Tur=((i/Convert.ToInt32(setting2))+1).ToString()
-                };
-                
-
-				File.WriteAllText(setting5.Replace(".txt","")+"\\"+matchdetails.MDetail.Replace("|","")+".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString():matchdetails.ToString2());
-                richTextBox1.AppendText((Convert.ToBoolean(setting1)? matchdetails.ToString():matchdetails.ToString2())+"\n\n");
-
-            }
+            });
         }
     }
 }
