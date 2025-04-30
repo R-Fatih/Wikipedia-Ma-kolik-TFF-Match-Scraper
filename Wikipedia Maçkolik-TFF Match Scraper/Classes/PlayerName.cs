@@ -24,10 +24,11 @@ namespace Wikipedi_Maçkolik_Match_Data
             httpClient.DefaultRequestHeaders.Add("User-Agent", "PostmanRuntime/7.34.0");
 
             //File.WriteAllText("a.txt", $"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP2458%20\"{id}\"%20.%0A%7D&format=json");
-            string myJsonResponse =await  httpClient.GetStringAsync($"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP2458%20\"{id}\"%20.%0A%7D&format=json");
             //Match myDeserializedClass = JsonConvert.DeserializeObject<Match>(myJsonResponse);
             try
             {
+                string myJsonResponse = await httpClient.GetStringAsync($"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP2458%20\"{id}\"%20.%0A%7D&format=json");
+
 
                 JObject jObject = JObject.Parse(myJsonResponse);
                 var qid = jObject["results"]["bindings"][0]["item"]["value"].ToString().Replace("http://www.wikidata.org/entity/", "");
@@ -82,9 +83,9 @@ namespace Wikipedi_Maçkolik_Match_Data
             }
             catch (Exception)
             {
-                DateTime dt = DateTime.Now;
-                File.WriteAllText("errors//error" + dt.ToString("yyyy-MM-dd-HH-mm") + ".txt", id + "\n");
-                RichTextBox.AppendText(id + "\n");
+                //DateTime dt = DateTime.Now;
+                //File.WriteAllText("errors//error" + dt.ToString("yyyy-MM-dd-HH-mm") + ".txt", id + "\n");
+                //RichTextBox.AppendText(id + "\n");
 			}
             return id.ToString();
         }

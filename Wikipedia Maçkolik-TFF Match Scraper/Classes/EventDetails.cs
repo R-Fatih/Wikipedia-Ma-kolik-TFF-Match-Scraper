@@ -46,10 +46,10 @@ namespace TFFScraper
             public int side { get; set; }
             public string event_name { get; set; }
         }
-        private RichTextBox richTextBox1 = new RichTextBox();
-        private RichTextBox richTextBox2 = new RichTextBox();
-        private ListBox listBox1=new ListBox();
-        private ListBox listBox2= new ListBox();
+         RichTextBox richTextBox1 = new RichTextBox();
+         RichTextBox richTextBox2 = new RichTextBox();
+         ListBox listBox1=new ListBox();
+         ListBox listBox2= new ListBox();
         HttpClient _client = new();
         public async Task< List<RichTextBox>> Events(string adres,RichTextBox richTextBox)
         {
@@ -59,8 +59,9 @@ namespace TFFScraper
             //			Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
 
             Console.WriteLine("adressss"+adres);
-
+            _client.Timeout = TimeSpan.FromSeconds(120);
             var myJsonResponse =await _client.GetStringAsync("https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=" +adres + "&s=0");
+            Console.WriteLine("okey");
            // Console.WriteLine(myJsonResponse);
                 PlayerName playerName = new PlayerName(richTextBox);
 
@@ -97,8 +98,8 @@ namespace TFFScraper
             //listBox1.Items.Clear();
 
             // Append events to the ListBox
-            Home( groupedDetails);
-                Away(groupedDetails2);
+          await   Home( groupedDetails);
+             await    Away(groupedDetails2);
            // Console.WriteLine(richTextBox1.Text);
             List<RichTextBox> richTextBoxes = new List<RichTextBox>
             {
@@ -155,7 +156,7 @@ namespace TFFScraper
                 // Remove the trailing " || " and " | "
                 eventText = eventText.TrimEnd(new char[] { ' ', '|', ' ' });
                 count++;
-                richTextBox2.AppendText(eventText + " [[" + await  group.Key + "]] " + (count != groupedDetails.Count() ? "\n" : ""));
+                richTextBox2.AppendText(eventText + " [[" + (await  group.Key) + "]] " + (count != groupedDetails.Count() ? "\n" : ""));
             }
 
             richTextBox2.Text = richTextBox2.Text.Replace("}||{gol", "|").Replace("}||{baspenaltı", "|").Replace("}||{kaçpenaltı", "|");

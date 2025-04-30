@@ -16,6 +16,8 @@ using TFFScraper;
 using Wikipedi_Maçkolik_Match_Data;
 using Wikipedia_Maçkolik_TFF_Match_Scraper.NewFolder1;
 using Wikipedia_Standings;
+using static System.Net.WebRequestMethods;
+using File = System.IO.File;
 
 namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 {
@@ -75,92 +77,92 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                      ,"//*[@id=\"ctl00_MPane_m_29_194_ctnr_m_29_194_MacBilgiDisplay1_dtMacBilgisi_Label12\"]"
             };
 
-            Match match = new Match();
+                Match match = new Match();
 
-            HtmlAgilityPack.HtmlDocument document=null;
-            HtmlAgilityPack.HtmlWeb web = new HtmlAgilityPack.HtmlWeb();
-            web.AutoDetectEncoding = false;
+                HtmlAgilityPack.HtmlDocument document = null;
+                HtmlAgilityPack.HtmlWeb web = new HtmlAgilityPack.HtmlWeb();
+                web.AutoDetectEncoding = false;
 
-            web.OverrideEncoding = Encoding.GetEncoding("iso-8859-9");
-            web.Timeout = 15000; ;
+                web.OverrideEncoding = Encoding.GetEncoding("iso-8859-9");
+                web.Timeout = 15000; ;
 
             trydoc:
-            try
-            {
-
-           
-            document = web.Load($"https://tff.org/Default.aspx?pageID=29&macID={adres}");
-            }
-            catch (Exception)
-            {
-                goto trydoc;
-
-            }
-            var stad = document.DocumentNode.SelectNodes(list[0]);
-            var r1 = document.DocumentNode.SelectNodes(list[1]);
-            var r2 = document.DocumentNode.SelectNodes(list[2]);
-            var r3 = document.DocumentNode.SelectNodes(list[3]);
-            var r4 = document.DocumentNode.SelectNodes(list[4]);
-            var r5 = document.DocumentNode.SelectNodes(list[5]);
-            var r6 = document.DocumentNode.SelectNodes(list[6]);
-            var r7 = document.DocumentNode.SelectNodes(list[7]);
-            var date = document.DocumentNode.SelectNodes(list[8]);
-            var h = document.DocumentNode.SelectNodes(list[9]);
-            var a = document.DocumentNode.SelectNodes(list[10]);
-            var hs = document.DocumentNode.SelectNodes(list[11]);
-            var ass = document.DocumentNode.SelectNodes(list[12]);
-            try
-            {
-				match.HomeMS = Convert.ToInt32(hs[0].InnerText);
-				match.AwayMS = Convert.ToInt32(ass[0].InnerText);
-			}
-            catch (Exception)
-            {
+                try
+                {
 
 
-            }
-            try
-            {
+                    document = web.Load($"https://tff.org/Default.aspx?pageID=29&macID={adres}");
+                }
+                catch (Exception)
+                {
+                    goto trydoc;
 
-                match.Referee = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r1[0].InnerText.Substring(0, (r1[0].InnerText.IndexOf("("))).ToLower());
-                match.Referee2 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r2[0].InnerText.Substring(0, (r2[0].InnerText.IndexOf("("))).ToLower());
-                match.Referee3 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r3[0].InnerText.Substring(0, (r3[0].InnerText.IndexOf("("))).ToLower());
-                match.Referee4 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r4[0].InnerText.Substring(0, (r4[0].InnerText.IndexOf("("))).ToLower());
-                match.Referee5 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r5[0].InnerText.Substring(0, (r5[0].InnerText.IndexOf("("))).ToLower());
-                match.Referee6 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r6[0].InnerText.Substring(0, (r6[0].InnerText.IndexOf("("))).ToLower());
-                match.Referee7 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r7[0].InnerText.Substring(0, (r7[0].InnerText.IndexOf("("))).ToLower());
-				
-			}
-            catch (Exception)
-            {
+                }
+                var stad = document.DocumentNode.SelectNodes(list[0]);
+                var r1 = document.DocumentNode.SelectNodes(list[1]);
+                var r2 = document.DocumentNode.SelectNodes(list[2]);
+                var r3 = document.DocumentNode.SelectNodes(list[3]);
+                var r4 = document.DocumentNode.SelectNodes(list[4]);
+                var r5 = document.DocumentNode.SelectNodes(list[5]);
+                var r6 = document.DocumentNode.SelectNodes(list[6]);
+                var r7 = document.DocumentNode.SelectNodes(list[7]);
+                var date = document.DocumentNode.SelectNodes(list[8]);
+                var h = document.DocumentNode.SelectNodes(list[9]);
+                var a = document.DocumentNode.SelectNodes(list[10]);
+                var hs = document.DocumentNode.SelectNodes(list[11]);
+                var ass = document.DocumentNode.SelectNodes(list[12]);
+                try
+                {
+                    match.HomeMS = Convert.ToInt32(hs[0].InnerText);
+                    match.AwayMS = Convert.ToInt32(ass[0].InnerText);
+                }
+                catch (Exception)
+                {
 
 
-            }
-            match.StadiumName = (stad[0].InnerText);
-            match.StadiumId = (stad[0].Attributes["href"].Value.Replace("Default.aspx?pageId=394&amp;stadId=", ""));
-            match.Date = Convert.ToDateTime(date[0].InnerText.Replace(" - ", " "));
-            match.HomeId = (h[0].Attributes["href"].Value.Replace("Default.aspx?pageId=28&amp;kulupId=", ""));
-            match.AwayId = (a[0].Attributes["href"].Value.Replace("Default.aspx?pageId=28&amp;kulupId=", ""));
-            match.TFFId = Convert.ToInt32(adres);
-       
+                }
+                try
+                {
 
+                    match.Referee = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r1[0].InnerText.Substring(0, (r1[0].InnerText.IndexOf("("))).ToLower());
+                    match.Referee2 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r2[0].InnerText.Substring(0, (r2[0].InnerText.IndexOf("("))).ToLower());
+                    match.Referee3 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r3[0].InnerText.Substring(0, (r3[0].InnerText.IndexOf("("))).ToLower());
+                    match.Referee4 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r4[0].InnerText.Substring(0, (r4[0].InnerText.IndexOf("("))).ToLower());
+                    match.Referee5 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r5[0].InnerText.Substring(0, (r5[0].InnerText.IndexOf("("))).ToLower());
+                    match.Referee6 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r6[0].InnerText.Substring(0, (r6[0].InnerText.IndexOf("("))).ToLower());
+                    match.Referee7 = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(r7[0].InnerText.Substring(0, (r7[0].InnerText.IndexOf("("))).ToLower());
+
+                }
+                catch (Exception)
+                {
+
+
+                }
+                match.StadiumName = (stad[0].InnerText);
+                match.StadiumId = (stad[0].Attributes["href"].Value.Replace("Default.aspx?pageId=394&amp;stadId=", ""));
+                match.Date = Convert.ToDateTime(date[0].InnerText.Replace(" - ", " "));
+                match.HomeId = (h[0].Attributes["href"].Value.Replace("Default.aspx?pageId=28&amp;kulupId=", ""));
+                match.AwayId = (a[0].Attributes["href"].Value.Replace("Default.aspx?pageId=28&amp;kulupId=", ""));
+                match.TFFId = Convert.ToInt32(adres);
 
 
 
-            //try
-            //{
 
 
-            //	match.HomeScore = Convert.ToInt32(skor[0].InnerText.Split('-')[0]);
-            //	match.AwayScore = Convert.ToInt32(skor[0].InnerText.Split('-')[1]);
-            //}
-            //catch (Exception)
-            //{
-
-            //}
+                //try
+                //{
 
 
-            return match;
+                //	match.HomeScore = Convert.ToInt32(skor[0].InnerText.Split('-')[0]);
+                //	match.AwayScore = Convert.ToInt32(skor[0].InnerText.Split('-')[1]);
+                //}
+                //catch (Exception)
+                //{
+
+                //}
+
+
+                return match;
                 //for (int i = 0; i < takımlar.Count; i++)
                 //{
                 //    dataGridView1.Rows.Add(i+1,takımlar[i], puanlar[i]);
@@ -177,73 +179,77 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 
         private async void button1_Click(object sender, EventArgs e)
         {
-			var parser = new FileIniDataParser();
-			IniData data = parser.ReadFile("settings.ini");
+            var parser = new FileIniDataParser();
+            IniData data = parser.ReadFile("settings.ini");
 
-			string setting1 = data["Settings"]["VAR"];
-			string setting2 = data["Settings"]["Hafta"];
-			string setting3 = data["Settings"]["Start"];
-			string setting4 = data["Settings"]["Finish"];
-			string setting5 = data["Settings"]["File"];
+            string setting1 = data["Settings"]["VAR"];
+            string setting2 = data["Settings"]["Hafta"];
+            string setting3 = data["Settings"]["Start"];
+            string setting4 = data["Settings"]["Finish"];
+            string setting5 = data["Settings"]["File"];
 
 
-			string[] strings = File.ReadAllLines(setting5);
-            
-                for (int i = Convert.ToInt32(setting3); i < Convert.ToInt32(setting4); i++)
+            string[] strings = File.ReadAllLines(setting5);
+            HttpClient http = new HttpClient();
+
+            Team[] teams = await http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json");
+
+            for (int i = Convert.ToInt32(setting3); i < Convert.ToInt32(setting4); i++)
+            {
+                await Console.Out.WriteLineAsync(i.ToString());
+
+                adres = strings[i].Split(',')[0];
+                maçkolik = strings[i].Split(',')[1];
+
+                //Console.WriteLine("adres");
+                // Console.WriteLine(string.IsNullOrWhiteSpace(adres));
+                StadiumName playerName = new StadiumName();
+                StadiumPlace stadiumPlace = new StadiumPlace();
+                Match match = null;
+                if (adres != null)
                 {
-                    await Console.Out.WriteLineAsync(i.ToString());
-
-                    adres = strings[i].Split(',')[0];
-                    maçkolik = strings[i].Split(',')[1];
-
-                    //Console.WriteLine("adres");
-                    // Console.WriteLine(string.IsNullOrWhiteSpace(adres));
-                    StadiumName playerName = new StadiumName();
-                    StadiumPlace stadiumPlace = new StadiumPlace();
-                    HttpClient http = new HttpClient();
-                    Match match = null;
-                    if (adres != null)
-                    {
-                        match = await Scrape(adres);
-
-                    }
-                    else
-                    {
-                        match = new Match();
-                    }
-                    Team[] teams =await  http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json");
-                    //Console.WriteLine("burdan maçkolk" + maçkolik);
-                    EventDetails eventDetails = new EventDetails();
-                    var richTextBoxes =await eventDetails.Events(maçkolik, richTextBox2);
-                    // Console.WriteLine("burdan" + richTextBoxes[0].Text);
-                    //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
-                    var matchhh = match;
-                    var matchdetails = new MatchDetails
-                    {
-                        MDetail = adres != null ? "|" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].KısaKodu + "-" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].KısaKodu : "",
-                        BesinciHakem = match.Referee5 + ", " + match.Referee6 + (match.Referee7 != null ? ", " + match.Referee7 : ""),
-                        DorduncuHakem = match.Referee4,
-                        Hakem = match.Referee,
-                        YardimciHakemler = match.Referee2 + ", " + match.Referee3,
-                        Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
-                        Takim1 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].TakımAdı + "]]" : "",
-                        Takim2 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].TakımAdı + "]]" : "",
-                        Sonuc = match.HomeMS + " - " + match.AwayMS,
-                        Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
-                        Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
-                        Stadyum = adres != null ? "[[" + await  playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
-                        Yer = adres != null ? "[[" + await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
-                        Goller1 = richTextBoxes[0].Text,
-                        Goller2 = richTextBoxes[1].Text,
-                        Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()
-                    };
-
-
-                    File.WriteAllText(setting5.Replace(".txt", "") + "\\" + matchdetails.MDetail.Replace("|", "") + ".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2());
-                    richTextBox1.AppendText((Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2()) + "\n\n");
-
+                    match = await Scrape(adres);
+                    Console.WriteLine("scraped"); 
                 }
-            
+                else
+                {
+                    match = new Match();
+                }
+                //Console.WriteLine("burdan maçkolk" + maçkolik);
+                EventDetails eventDetails = new EventDetails();
+                var richTextBoxes = await eventDetails.Events(maçkolik, richTextBox2);
+                // Console.WriteLine("burdan" + richTextBoxes[0].Text);
+                //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
+                var matchhh = match;
+                var matchdetails = new MatchDetails
+                {
+                    MDetail = adres != null ? "|" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].KısaKodu + "-" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].KısaKodu : "",
+                    BesinciHakem = match.Referee5 + ", " + match.Referee6 + (match.Referee7 != null ? ", " + match.Referee7 : ""),
+                    DorduncuHakem = match.Referee4,
+                    Hakem = match.Referee,
+                    YardimciHakemler = match.Referee2 + ", " + match.Referee3,
+                    Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
+                    Takim1 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].TakımAdı + "]]" : "",
+                    Takim2 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].TakımAdı + "]]" : "",
+                    Sonuc = match.HomeMS + " - " + match.AwayMS,
+                    Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
+                    Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
+                    Stadyum = adres != null ? "[[" + await playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                    Yer = adres != null ? "[[" + await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                    Goller1 = richTextBoxes[0].Text,
+                    Goller2 = richTextBoxes[1].Text,
+                    Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()
+                };
+
+
+                File.WriteAllText(setting5.Replace(".txt", "") + "\\" + matchdetails.MDetail.Replace("|", "") + ".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2());
+
+                if (i % Convert.ToInt32(setting2) == 0)
+                    richTextBox1.AppendText($"<!-- {((i / Convert.ToInt32(setting2)) + 1)}. Hafta -->\n");
+                richTextBox1.AppendText((Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2()) + "\n\n");
+
+            }
+
         }
     }
 }
