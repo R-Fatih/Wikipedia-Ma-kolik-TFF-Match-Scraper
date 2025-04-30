@@ -56,7 +56,9 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
         }
         public async Task<Match> Scrape(string adres)
         {
-            List<string> list = new List<string>
+            return await Task.Run(() =>
+            {
+                List<string> list = new List<string>
             {
                 "//*[@id=\"ctl00_MPane_m_29_194_ctnr_m_29_194_MacBilgiDisplay1_dtMacBilgisi_lnkStad\"]",
                     "//*[@id=\"ctl00_MPane_m_29_194_ctnr_m_29_194_MacBilgiDisplay1_dtMacBilgisi_rpt_ctl00_lnkHakem\"]",
@@ -159,17 +161,18 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 
 
             return match;
-            //for (int i = 0; i < takımlar.Count; i++)
-            //{
-            //    dataGridView1.Rows.Add(i+1,takımlar[i], puanlar[i]);
-            //}
+                //for (int i = 0; i < takımlar.Count; i++)
+                //{
+                //    dataGridView1.Rows.Add(i+1,takımlar[i], puanlar[i]);
+                //}
+            });
         }
         string adres = "250186", maçkolik = "3946438";
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Form2 form2 = new Form2();
-            form2.Show();
+            //Form2 form2 = new Form2();
+            //form2.Show();
         }
 
         private async void button1_Click(object sender, EventArgs e)
@@ -185,8 +188,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 
 
 			string[] strings = File.ReadAllLines(setting5);
-            await Task.Run(async () =>
-            {
+            
                 for (int i = Convert.ToInt32(setting3); i < Convert.ToInt32(setting4); i++)
                 {
                     await Console.Out.WriteLineAsync(i.ToString());
@@ -209,10 +211,10 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     {
                         match = new Match();
                     }
-                    Team[] teams = http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json").Result;
+                    Team[] teams =await  http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json");
                     //Console.WriteLine("burdan maçkolk" + maçkolik);
                     EventDetails eventDetails = new EventDetails();
-                    List<RichTextBox> richTextBoxes = eventDetails.Events(maçkolik, richTextBox2);
+                    var richTextBoxes =await eventDetails.Events(maçkolik, richTextBox2);
                     // Console.WriteLine("burdan" + richTextBoxes[0].Text);
                     //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
                     var matchhh = match;
@@ -229,8 +231,8 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                         Sonuc = match.HomeMS + " - " + match.AwayMS,
                         Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
                         Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
-                        Stadyum = adres != null ? "[[" + playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
-                        Yer = adres != null ? "[[" + stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                        Stadyum = adres != null ? "[[" + await  playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                        Yer = adres != null ? "[[" + await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
                         Goller1 = richTextBoxes[0].Text,
                         Goller2 = richTextBoxes[1].Text,
                         Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()
@@ -241,7 +243,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     richTextBox1.AppendText((Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2()) + "\n\n");
 
                 }
-            });
+            
         }
     }
 }

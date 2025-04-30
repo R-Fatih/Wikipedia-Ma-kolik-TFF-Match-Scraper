@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System;
 using System.Net.Http;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Numerics;
+using Wikipedia_Maçkolik_TFF_Match_Scraper;
 namespace TFFScraper
 {
     public class EventDetails
@@ -43,13 +46,13 @@ namespace TFFScraper
             public int side { get; set; }
             public string event_name { get; set; }
         }
-        RichTextBox richTextBox1=new RichTextBox();
-        RichTextBox richTextBox2=new RichTextBox();
-        ListBox listBox1=new ListBox();
-        ListBox listBox2=new ListBox();
-       public List<RichTextBox> Events(string adres,RichTextBox richTextBox)
+        private RichTextBox richTextBox1 = new RichTextBox();
+        private RichTextBox richTextBox2 = new RichTextBox();
+        private ListBox listBox1=new ListBox();
+        private ListBox listBox2= new ListBox();
+        HttpClient _client = new();
+        public async Task< List<RichTextBox>> Events(string adres,RichTextBox richTextBox)
         {
-            HttpClient http = new HttpClient();
             //	Team[] teams = http.GetFromJsonAsync<Team[]>("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json").Result;
 
             //string teams = http.GetStringAsync("https://raw.githubusercontent.com/R-Fatih/Wikipedia-Football/main/teams.json").Result;
@@ -57,7 +60,8 @@ namespace TFFScraper
 
             Console.WriteLine("adressss"+adres);
 
-            string myJsonResponse = http.GetStringAsync("https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=" +adres + "&s=0").Result;
+            var myJsonResponse =await _client.GetStringAsync("https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=" +adres + "&s=0");
+           // Console.WriteLine(myJsonResponse);
                 PlayerName playerName = new PlayerName(richTextBox);
 
                 //Match myDeserializedClass = JsonConvert.DeserializeObject<Match>(myJsonResponse);
@@ -77,15 +81,23 @@ namespace TFFScraper
                     listBox2.Items.Add(list2[i].player_id + "," + list2[i].event_id + "," + list2[i].event_minute);
                 }
 
-                var groupedDetails = list1.GroupBy(detail => playerName.QID(detail.player_id));
-                var groupedDetails2 = list2.GroupBy(detail => playerName.QID(detail.player_id));
+                var groupedDetails = list1.GroupBy(async detail =>
+                {
+                    var player =await  playerName.QID(detail.player_id);
+                    return player;
+                });
+                var groupedDetails2 = list2.GroupBy(async detail =>
+                {
+                    var player = await playerName.QID(detail.player_id);
+                    return player;
+                });
            // Console.WriteLine("listcount" + list1.Count);
 
             // Initialize the ListBox items
             //listBox1.Items.Clear();
 
             // Append events to the ListBox
-            Home(groupedDetails);
+            Home( groupedDetails);
                 Away(groupedDetails2);
            // Console.WriteLine(richTextBox1.Text);
             List<RichTextBox> richTextBoxes = new List<RichTextBox>
@@ -102,12 +114,12 @@ namespace TFFScraper
             return richTextBoxes;
         }
 
-        private void Home(IEnumerable<IGrouping<string, MatchDetail>> groupedDetails)
+        private async Task Home(IEnumerable<IGrouping<Task<string>, MatchDetail>> groupedDetails)
         {
             int count = 0;
             foreach (var group in groupedDetails)
             {
-                var eventText = "* [[" + group.Key + "]] ";
+                var eventText = "* [[" + await  group.Key + "]] ";
                 var eventsByEventID = group.GroupBy(detail => detail.event_id);
 
                 foreach (var eventGroup in eventsByEventID)
@@ -126,7 +138,7 @@ namespace TFFScraper
             richTextBox1.Text = richTextBox1.Text.Replace("}||{gol", "|").Replace("}||{baspenaltı", "|").Replace("}||{kaçpenaltı", "|");
             richTextBox1.Text = richTextBox1.Text.Replace("{", "{{").Replace("}", "}}");
         }
-        private void Away(IEnumerable<IGrouping<string, MatchDetail>> groupedDetails)
+        private async Task Away(IEnumerable<IGrouping<Task<string>, MatchDetail>> groupedDetails)
         {
             int count = 0;
             foreach (var group in groupedDetails)
@@ -143,7 +155,7 @@ namespace TFFScraper
                 // Remove the trailing " || " and " | "
                 eventText = eventText.TrimEnd(new char[] { ' ', '|', ' ' });
                 count++;
-                richTextBox2.AppendText(eventText + " [[" + group.Key + "]] " + (count != groupedDetails.Count() ? "\n" : ""));
+                richTextBox2.AppendText(eventText + " [[" + await  group.Key + "]] " + (count != groupedDetails.Count() ? "\n" : ""));
             }
 
             richTextBox2.Text = richTextBox2.Text.Replace("}||{gol", "|").Replace("}||{baspenaltı", "|").Replace("}||{kaçpenaltı", "|");

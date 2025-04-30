@@ -12,17 +12,17 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper.NewFolder1
     public class StadiumPlace
     {
 
-        public string QIDCity(int id)
+        public async Task<string> QIDCity(int id)
         {
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("User-Agent", "PostmanRuntime/7.34.0");
 
-            File.WriteAllText("a.txt", $"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP7402%20\"{id}\"%20.%0A%7D&format=json");
-            string myJsonResponse = httpClient.GetStringAsync($"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP7402%20\"{id}\"%20.%0A%7D&format=json").Result;
+            //File.WriteAllText("a.txt", $"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP7402%20\"{id}\"%20.%0A%7D&format=json");
+            string myJsonResponse =await  httpClient.GetStringAsync($"https://query.wikidata.org/sparql?query=SELECT%20%3Fitem%0AWHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP7402%20\"{id}\"%20.%0A%7D&format=json");
             JObject jObject = JObject.Parse(myJsonResponse);
             var qid = jObject["results"]["bindings"][0]["item"]["value"].ToString().Replace("http://www.wikidata.org/entity/", "");
 
-            string myJsonResponse2 = httpClient.GetStringAsync($"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=" + jObject["results"]["bindings"][0]["item"]["value"].ToString().Replace("http://www.wikidata.org/entity/", "") + "&format=json").Result;
+            string myJsonResponse2 =await  httpClient.GetStringAsync($"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=" + jObject["results"]["bindings"][0]["item"]["value"].ToString().Replace("http://www.wikidata.org/entity/", "") + "&format=json");
             JObject jObject2 = JObject.Parse(myJsonResponse2);
 
             try
@@ -44,7 +44,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper.NewFolder1
 
         }
 
-        public string QID(int id)
+        public async Task<string> QID(int id)
         {
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("User-Agent", "PostmanRuntime/7.34.0");
@@ -58,7 +58,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper.NewFolder1
             {
 
             var qid = QIDCity(id);
-            string myJsonResponse2 = httpClient.GetStringAsync($"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=" + qid + "&format=json").Result;
+            string myJsonResponse2 =await  httpClient.GetStringAsync($"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=" + qid + "&format=json");
             JObject jObject2 = JObject.Parse(myJsonResponse2);
             try
             {
