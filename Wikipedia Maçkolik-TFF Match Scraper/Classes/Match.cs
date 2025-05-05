@@ -20,6 +20,7 @@ namespace TFFScraper
         public int HomeMS { get; set; }
         public int AwayMS { get; set; }
         public DateTime Date { get; set; }
+        public bool IsDefaultWin { get; set; }
 
 
     }

@@ -147,6 +147,10 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
 
 
 
+                if ((match.Referee == null && match.Referee2 == null) && ((match.HomeMS == 3 && match.AwayMS == 0) || (match.AwayMS == 3 && match.HomeMS == 0)))
+                    match.IsDefaultWin = true;
+                else
+                    match.IsDefaultWin = false;
 
 
                 //try
@@ -209,7 +213,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 if (adres != null)
                 {
                     match = await Scrape(adres);
-                    Console.WriteLine("scraped"); 
+                    Console.WriteLine("scraped");
                 }
                 else
                 {
@@ -231,7 +235,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
                     Takim1 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].TakımAdı + "]]" : "",
                     Takim2 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].TakımAdı + "]]" : "",
-                    Sonuc = match.HomeMS + " - " + match.AwayMS,
+                    Sonuc = match.HomeMS + " - " + match.AwayMS +(match.IsDefaultWin?"<br> (hükmen)":""),
                     Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
                     Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
                     Stadyum = adres != null ? "[[" + await playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",

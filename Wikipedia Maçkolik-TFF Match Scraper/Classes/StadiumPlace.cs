@@ -58,7 +58,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper.NewFolder1
             try
             {
 
-            var qid = QIDCity(id);
+            var qid =await QIDCity(id);
             string myJsonResponse2 =await  httpClient.GetStringAsync($"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=" + qid + "&format=json");
             JObject jObject2 = JObject.Parse(myJsonResponse2);
             try
