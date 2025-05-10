@@ -238,8 +238,8 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     Sonuc = match.HomeMS + " - " + match.AwayMS +(match.IsDefaultWin?"<br> (hükmen)":""),
                     Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
                     Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
-                    Stadyum = adres != null ? "[[" + await playerName.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
-                    Yer = adres != null ? "[[" + await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) + "]]" : "",
+                    Stadyum = adres != null ? "[[" +(match.StadiumId!=""? await playerName.QID(Convert.ToInt32(match.StadiumId)):"") + "]]" : "",
+                    Yer = adres != null ? "[[" + (match.StadiumId != "" ? await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)):"") + "]]" : "",
                     Goller1 = richTextBoxes[0].Text,
                     Goller2 = richTextBoxes[1].Text,
                     Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()

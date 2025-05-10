@@ -56,7 +56,21 @@ namespace TFFScraper
         {
             Console.WriteLine("adressss" + adres);
             _client.Timeout = TimeSpan.FromSeconds(120);
-            var myJsonResponse = await _client.GetStringAsync("https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=" + adres + "&s=0");
+            string myJsonResponse = null;
+        trymatchesfrommackolik:
+            try
+            {
+
+         
+
+             myJsonResponse = await _client.GetStringAsync("https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=" + adres + "&s=0");
+
+            }
+            catch (Exception)
+            {
+                goto trymatchesfrommackolik;
+
+            }
             Console.WriteLine("okey");
 
             PlayerName playerName = new PlayerName(richTextBox);
