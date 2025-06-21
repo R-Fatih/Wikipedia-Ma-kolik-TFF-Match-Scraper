@@ -85,7 +85,7 @@ namespace Wikipedi_Maçkolik_Match_Data
             {
                 //DateTime dt = DateTime.Now;
                 //File.WriteAllText("errors//error" + dt.ToString("yyyy-MM-dd-HH-mm") + ".txt", id + "\n");
-                //RichTextBox.AppendText(id + "\n");
+                RichTextBox.AppendText(id + "\n");
 			}
             return id.ToString();
         }
