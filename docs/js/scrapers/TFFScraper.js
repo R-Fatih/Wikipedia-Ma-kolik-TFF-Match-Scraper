@@ -50,7 +50,7 @@ class TFFScraper {
         // Try custom Cloudflare Worker proxy first (best encoding support)
         if (this.customProxyUrl) {
             try {
-                const proxyUrl = this.customProxyUrl + encodeURIComponent(tffUrl);
+                const proxyUrl = this.customProxyUrl+"?url=" + encodeURIComponent(tffUrl);
                 const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
 
                 if (response.ok) {
