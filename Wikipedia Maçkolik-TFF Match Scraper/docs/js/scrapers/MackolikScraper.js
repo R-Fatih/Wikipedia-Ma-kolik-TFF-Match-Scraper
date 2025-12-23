@@ -5,6 +5,7 @@ class MackolikScraper {
     constructor() {
         // CORS proxy options
         this.proxyUrls = [
+		    'https://api.codetabs.com/v1/proxy?quest=',
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url='
         ];

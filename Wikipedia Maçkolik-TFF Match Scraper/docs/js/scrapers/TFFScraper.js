@@ -4,7 +4,12 @@
  */
 class TFFScraper {
     constructor() {
-        // Multiple CORS proxy options for fallback
+        // CORS proxy options - custom worker should be first for Turkish encoding support
+        // IMPORTANT: Replace 'YOUR_WORKER_NAME' with your Cloudflare Worker subdomain
+        // Example: 'https://tff-proxy.your-name.workers.dev/?url='
+        this.customProxyUrl = null; // Set your Cloudflare Worker URL here
+
+        // Fallback proxies (may have encoding issues)
         this.proxyUrls = [
             'https://api.codetabs.com/v1/proxy?quest=',
             'https://api.allorigins.win/raw?url=',
@@ -12,7 +17,7 @@ class TFFScraper {
             'https://thingproxy.freeboard.io/fetch/'
         ];
         this.currentProxyIndex = 0;
-        this.timeout = 20000; // Increased timeout
+        this.timeout = 20000;
     }
 
     /**
@@ -41,23 +46,43 @@ class TFFScraper {
         const tffUrl = `https://tff.org/Default.aspx?pageID=29&macID=${macId}`;
 
         let html = null;
-        let attempts = 0;
-        const maxAttempts = this.proxyUrls.length * 2;
 
-        while (!html && attempts < maxAttempts) {
+        // Try custom Cloudflare Worker proxy first (best encoding support)
+        if (this.customProxyUrl) {
             try {
-                const proxyUrl = this.getProxyUrl() + encodeURIComponent(tffUrl);
+                const proxyUrl = this.customProxyUrl + encodeURIComponent(tffUrl);
                 const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                // Get response as ArrayBuffer and decode with proper charset
-                const buffer = await response.arrayBuffer();
-                html = this.decodeResponse(buffer, response);
+                if (response.ok) {
+                    // Custom proxy returns UTF-8, so use text() directly
+                    html = await response.text();
+                    console.log('Using custom Cloudflare Worker proxy');
+                }
             } catch (error) {
-                console.warn(`Proxy ${this.currentProxyIndex} failed:`, error.message);
-                this.switchProxy();
-                attempts++;
+                console.warn('Custom proxy failed:', error.message);
+            }
+        }
+
+        // Fallback to public proxies if custom didn't work
+        if (!html) {
+            let attempts = 0;
+            const maxAttempts = this.proxyUrls.length * 2;
+
+            while (!html && attempts < maxAttempts) {
+                try {
+                    const proxyUrl = this.getProxyUrl() + encodeURIComponent(tffUrl);
+                    const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    // Get response as ArrayBuffer and decode with proper charset
+                    const buffer = await response.arrayBuffer();
+                    html = this.decodeResponse(buffer, response);
+                } catch (error) {
+                    console.warn(`Proxy ${this.currentProxyIndex} failed:`, error.message);
+                    this.switchProxy();
+                    attempts++;
+                }
             }
         }
 
@@ -232,27 +257,23 @@ class TFFScraper {
 
     /**
      * Decode response with proper charset detection
+     * TFF uses Windows-1254 or ISO-8859-9 (Turkish encoding)
      */
     decodeResponse(buffer, response) {
-        // Try to get charset from Content-Type header
-        const contentType = response.headers.get('Content-Type') || '';
-        let charset = 'utf-8';
+        // Force ISO-8859-9 (Turkish) first since TFF uses it
+        const encodingsToTry = ['iso-8859-9', 'windows-1254', 'utf-8'];
 
-        const charsetMatch = contentType.match(/charset=([^;\s]+)/i);
-        if (charsetMatch) {
-            charset = charsetMatch[1].toLowerCase();
-        }
-
-        // Try multiple encodings for Turkish characters
-        const encodings = [charset, 'utf-8', 'iso-8859-9', 'windows-1254'];
-
-        for (const encoding of encodings) {
+        for (const encoding of encodingsToTry) {
             try {
                 const decoder = new TextDecoder(encoding);
                 const text = decoder.decode(buffer);
 
-                // Check if decoding was successful (no replacement characters)
-                if (!text.includes('�') || encoding === encodings[encodings.length - 1]) {
+                // Check if it has Turkish characters (good sign)
+                const hasTurkish = /[ıİğĞüÜşŞöÖçÇ]/.test(text);
+                const hasReplacementChar = text.includes('');
+
+                if (hasTurkish && !hasReplacementChar) {
+                    console.log(`Successfully decoded with ${encoding}`);
                     return text;
                 }
             } catch (e) {
@@ -260,37 +281,38 @@ class TFFScraper {
             }
         }
 
-        // Fallback to UTF-8
-        return new TextDecoder('utf-8').decode(buffer);
+        // Last resort: decode as ISO-8859-9 anyway
+        try {
+            return new TextDecoder('iso-8859-9').decode(buffer);
+        } catch (e) {
+            return new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+        }
     }
 
     /**
-     * Fix common Turkish character encoding issues
+     * Fix common Turkish character encoding issues (mojibake)
      */
     fixTurkishChars(text) {
+        // If we see replacement characters, the encoding is broken at proxy level
+        // Nothing we can do except log it
+        if (text.includes('')) {
+            console.warn('Encoding issue: replacement characters detected');
+        }
+
         // Common mojibake fixes for Turkish characters
+        // When UTF-8 is misinterpreted as ISO-8859-1
         const replacements = {
-            // UTF-8 interpreted as ISO-8859-1
-            'Ä±': 'ı',
-            'Ä°': 'İ',
-            'Ã¶': 'ö',
-            'Ã–': 'Ö',
-            'Ã¼': 'ü',
-            'Ãœ': 'Ü',
-            'ÅŸ': 'ş',
-            'Åž': 'Ş',
-            'ÄŸ': 'ğ',
-            'Äž': 'Ğ',
-            'Ã§': 'ç',
-            'Ã‡': 'Ç',
-            // Additional patterns
-            'Ä\u009F': 'ğ',
-            'Ä\u009E': 'Ğ',
-            'Å\u009F': 'ş',
-            'Å\u009E': 'Ş',
-            // Windows-1254 misinterpretations
-            '\u0131': 'ı',
-            '\u0130': 'İ',
+            'Ä±': 'ı', 'Ä°': 'İ',
+            'Ã¶': 'ö', 'Ã–': 'Ö',
+            'Ã¼': 'ü', 'Ãœ': 'Ü',
+            'ÅŸ': 'ş', 'Åž': 'Ş',
+            'ÄŸ': 'ğ', 'Äž': 'Ğ',
+            'Ã§': 'ç', 'Ã‡': 'Ç',
+            // ISO-8859-1 byte sequences
+            'Ã½': 'ı', 'Ãº': 'ü',
+            'Ã¾': 'ş', 'Ã°': 'ğ',
+            // Double encoding
+            'Ã„Â±': 'ı', 'Ã„Â°': 'İ',
         };
 
         let result = text;
