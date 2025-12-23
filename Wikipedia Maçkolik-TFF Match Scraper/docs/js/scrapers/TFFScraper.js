@@ -6,9 +6,9 @@ class TFFScraper {
     constructor() {
         // Multiple CORS proxy options for fallback
         this.proxyUrls = [
+            'https://api.codetabs.com/v1/proxy?quest=',
             'https://api.allorigins.win/raw?url=',
             'https://corsproxy.io/?',
-            'https://api.codetabs.com/v1/proxy?quest=',
             'https://thingproxy.freeboard.io/fetch/'
         ];
         this.currentProxyIndex = 0;
@@ -51,7 +51,9 @@ class TFFScraper {
 
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                html = await response.text();
+                // Get response as ArrayBuffer and decode with proper charset
+                const buffer = await response.arrayBuffer();
+                html = this.decodeResponse(buffer, response);
             } catch (error) {
                 console.warn(`Proxy ${this.currentProxyIndex} failed:`, error.message);
                 this.switchProxy();
@@ -62,6 +64,9 @@ class TFFScraper {
         if (!html) {
             throw new Error('Tüm proxy bağlantıları başarısız oldu');
         }
+
+        // Fix common Turkish character encoding issues
+        html = this.fixTurkishChars(html);
 
         // Parse HTML
         const parser = new DOMParser();
@@ -223,6 +228,77 @@ class TFFScraper {
             clearTimeout(timeoutId);
             throw error;
         }
+    }
+
+    /**
+     * Decode response with proper charset detection
+     */
+    decodeResponse(buffer, response) {
+        // Try to get charset from Content-Type header
+        const contentType = response.headers.get('Content-Type') || '';
+        let charset = 'utf-8';
+
+        const charsetMatch = contentType.match(/charset=([^;\s]+)/i);
+        if (charsetMatch) {
+            charset = charsetMatch[1].toLowerCase();
+        }
+
+        // Try multiple encodings for Turkish characters
+        const encodings = [charset, 'utf-8', 'iso-8859-9', 'windows-1254'];
+
+        for (const encoding of encodings) {
+            try {
+                const decoder = new TextDecoder(encoding);
+                const text = decoder.decode(buffer);
+
+                // Check if decoding was successful (no replacement characters)
+                if (!text.includes('�') || encoding === encodings[encodings.length - 1]) {
+                    return text;
+                }
+            } catch (e) {
+                console.warn(`Decoding with ${encoding} failed:`, e.message);
+            }
+        }
+
+        // Fallback to UTF-8
+        return new TextDecoder('utf-8').decode(buffer);
+    }
+
+    /**
+     * Fix common Turkish character encoding issues
+     */
+    fixTurkishChars(text) {
+        // Common mojibake fixes for Turkish characters
+        const replacements = {
+            // UTF-8 interpreted as ISO-8859-1
+            'Ä±': 'ı',
+            'Ä°': 'İ',
+            'Ã¶': 'ö',
+            'Ã–': 'Ö',
+            'Ã¼': 'ü',
+            'Ãœ': 'Ü',
+            'ÅŸ': 'ş',
+            'Åž': 'Ş',
+            'ÄŸ': 'ğ',
+            'Äž': 'Ğ',
+            'Ã§': 'ç',
+            'Ã‡': 'Ç',
+            // Additional patterns
+            'Ä\u009F': 'ğ',
+            'Ä\u009E': 'Ğ',
+            'Å\u009F': 'ş',
+            'Å\u009E': 'Ş',
+            // Windows-1254 misinterpretations
+            '\u0131': 'ı',
+            '\u0130': 'İ',
+        };
+
+        let result = text;
+        for (const [bad, good] of Object.entries(replacements)) {
+            result = result.split(bad).join(good);
+        }
+
+        return result;
     }
 }
 
