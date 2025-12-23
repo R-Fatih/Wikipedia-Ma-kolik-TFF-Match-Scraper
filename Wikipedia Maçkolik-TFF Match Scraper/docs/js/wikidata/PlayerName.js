@@ -1,9 +1,11 @@
 /**
  * PlayerName - Resolves player names from Wikidata using Maçkolik ID (P2458)
+ * Tracks IDs that couldn't be found in Wikidata
  */
 class PlayerName {
     constructor() {
         this.cache = new Map();
+        this.missingIds = new Set(); // Track IDs not found in Wikidata
     }
 
     /**
@@ -33,6 +35,8 @@ class PlayerName {
             const data = await response.json();
 
             if (!data.results.bindings.length) {
+                // ID not found in Wikidata - add to missing list
+                this.missingIds.add(id);
                 this.cache.set(id, id.toString());
                 return id.toString();
             }
@@ -60,6 +64,8 @@ class PlayerName {
             } else if (entity.labels?.en?.value) {
                 name = entity.labels.en.value;
             } else {
+                // Has Wikidata entry but no usable name
+                this.missingIds.add(id);
                 name = id.toString();
             }
 
@@ -70,6 +76,7 @@ class PlayerName {
 
         } catch (error) {
             console.error(`Error fetching player name for ID ${id}:`, error);
+            this.missingIds.add(id);
             this.cache.set(id, id.toString());
             return id.toString();
         }
@@ -87,10 +94,18 @@ class PlayerName {
     }
 
     /**
-     * Clear cache
+     * Get list of missing IDs (not found in Wikidata)
+     */
+    getMissingIds() {
+        return Array.from(this.missingIds);
+    }
+
+    /**
+     * Clear cache and missing IDs
      */
     clearCache() {
         this.cache.clear();
+        this.missingIds.clear();
     }
 }
 

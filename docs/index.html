@@ -144,6 +144,27 @@
                 <div class="error-list" id="errorList"></div>
             </section>
 
+            <!-- Missing Wikidata IDs -->
+            <section class="card missing-card" id="missingSection" style="display: none;">
+                <h2 class="card-title">
+                    <span class="icon">🔍</span>
+                    Wikidata'da Bulunamayanlar
+                </h2>
+                <p class="card-description">Bu ID'ler Wikidata'da bulunamadı. Maçkolik'e link verilerek düzenlenebilir.
+                </p>
+                <div class="missing-ids-container">
+                    <div class="missing-group">
+                        <h3>Oyuncular</h3>
+                        <div class="missing-list" id="missingPlayersList"></div>
+                    </div>
+                </div>
+                <div class="output-actions">
+                    <button class="btn btn-secondary" id="copyMissingBtn">
+                        <span>📋</span> ID'leri Kopyala
+                    </button>
+                </div>
+            </section>
+
             <!-- Output Section -->
             <section class="card output-card" id="outputSection" style="display: none;">
                 <h2 class="card-title">

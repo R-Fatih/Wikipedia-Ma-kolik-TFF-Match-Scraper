@@ -736,6 +736,47 @@ textarea::placeholder {
     color: var(--primary);
 }
 
+/* ===== Missing IDs Section ===== */
+.missing-ids-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.missing-group h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.missing-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.missing-id-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--warning);
+}
+
+.missing-id-item a {
+    color: var(--warning);
+    text-decoration: none;
+}
+
+.missing-id-item a:hover {
+    text-decoration: underline;
+}
+
 /* ===== Responsive =====/
 @media (max-width: 600px) {
     .app-container {

@@ -42,6 +42,9 @@ class App {
             currentMatch: document.getElementById('currentMatch'),
             errorSection: document.getElementById('errorSection'),
             errorList: document.getElementById('errorList'),
+            missingSection: document.getElementById('missingSection'),
+            missingPlayersList: document.getElementById('missingPlayersList'),
+            copyMissingBtn: document.getElementById('copyMissingBtn'),
             outputSection: document.getElementById('outputSection'),
             combinedOutput: document.getElementById('combinedOutput'),
             matchOutputs: document.getElementById('matchOutputs'),
@@ -134,6 +137,9 @@ class App {
 
         // Copy button
         this.elements.copyBtn.addEventListener('click', () => this.copyOutput());
+
+        // Copy missing IDs button
+        this.elements.copyMissingBtn.addEventListener('click', () => this.copyMissingIds());
 
         // Download button
         this.elements.downloadBtn.addEventListener('click', () => this.downloadOutput());
@@ -358,7 +364,12 @@ class App {
         this.elements.progressSection.style.display = 'block';
         this.elements.errorSection.style.display = 'none';
         this.elements.errorList.innerHTML = '';
+        this.elements.missingSection.style.display = 'none';
+        this.elements.missingPlayersList.innerHTML = '';
         this.elements.outputSection.style.display = 'none';
+
+        // Clear missing IDs from resolver
+        this.mackolikScraper.playerNameResolver.clearCache();
 
         let combinedOutput = '';
         let currentWeek = -1;
@@ -450,6 +461,9 @@ class App {
         this.renderIndividualOutputs();
         this.elements.outputSection.style.display = 'block';
 
+        // Show missing IDs if any
+        this.renderMissingIds();
+
         this.showToast(
             this.shouldStop
                 ? 'İşlem durduruldu'
@@ -508,6 +522,49 @@ class App {
                 <textarea readonly>${match.output}</textarea>
             `;
             this.elements.matchOutputs.appendChild(item);
+        }
+    }
+
+    /**
+     * Render missing Wikidata IDs
+     */
+    renderMissingIds() {
+        const missingPlayers = this.mackolikScraper.playerNameResolver.getMissingIds();
+
+        if (missingPlayers.length === 0) {
+            this.elements.missingSection.style.display = 'none';
+            return;
+        }
+
+        this.elements.missingSection.style.display = 'block';
+        this.elements.missingPlayersList.innerHTML = '';
+
+        for (const id of missingPlayers) {
+            const item = document.createElement('span');
+            item.className = 'missing-id-item';
+            item.innerHTML = `<a href="https://www.mackolik.com/oyuncu/x/${id}" target="_blank">${id}</a>`;
+            this.elements.missingPlayersList.appendChild(item);
+        }
+    }
+
+    /**
+     * Copy missing IDs to clipboard
+     */
+    async copyMissingIds() {
+        const missingPlayers = this.mackolikScraper.playerNameResolver.getMissingIds();
+
+        if (missingPlayers.length === 0) {
+            this.showToast('Eksik ID yok', 'info');
+            return;
+        }
+
+        const text = `Wikidata'da Bulunamayan Maçkolik Oyuncu ID'leri:\n${missingPlayers.join('\n')}`;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('ID\'ler panoya kopyalandı', 'success');
+        } catch (error) {
+            this.showToast('Kopyalama başarısız', 'error');
         }
     }
 
