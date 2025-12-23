@@ -203,7 +203,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 await Console.Out.WriteLineAsync(i.ToString());
 
                 adres = strings[i].Split(',')[0];
-                maçkolik = strings[i].Split(',')[1];
+                maçkolik =strings[i].Contains(',')? strings[i].Split(',')[1]: "";
 
                 //Console.WriteLine("adres");
                 // Console.WriteLine(string.IsNullOrWhiteSpace(adres));
@@ -221,31 +221,56 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 }
                 //Console.WriteLine("burdan maçkolk" + maçkolik);
                 EventDetails eventDetails = new EventDetails();
-                var richTextBoxes = await eventDetails.Events(maçkolik, richTextBox2);
+                List<RichTextBox> richTextBoxes;
+                richTextBoxes = new List<RichTextBox>
+                    {
+                        new RichTextBox(),
+                        new RichTextBox()
+                    };
+
+                if (maçkolik != "")
+                    richTextBoxes = await eventDetails.Events(maçkolik, richTextBox2);
+
                 // Console.WriteLine("burdan" + richTextBoxes[0].Text);
                 //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
                 var matchhh = match;
+                var homeTeam = teams.FirstOrDefault(a => a.TFFId == match.HomeId);
+                var awayTeam = teams.FirstOrDefault(a => a.TFFId == match.AwayId);
+
+                if (homeTeam == null || awayTeam == null)
+                {
+                    string missing = (homeTeam == null ? $"HomeId: {match.HomeId}" : "") +
+                                    (homeTeam == null && awayTeam == null ? ", " : "") +
+                                    (awayTeam == null ? $"AwayId: {match.AwayId}" : "");
+                    string message = $"Team not found for {missing} at match index {i}.";
+                    // Log to file
+                    File.AppendAllText("missing_teams.log", message + Environment.NewLine);
+                    // Show to user
+                    MessageBox.Show(message, "Team Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    // Optionally, throw if you want to stop execution
+                    // throw new Exception(message);
+                }
                 var matchdetails = new MatchDetails
                 {
-                    MDetail = adres != null ? "|" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].KısaKodu + "-" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].KısaKodu : "",
+                    MDetail = adres != null ? "|" + teams.FirstOrDefault(a => a.TFFId == match.HomeId)?.KısaKodu + "-" + teams.FirstOrDefault(a => a.TFFId == match.AwayId)?.KısaKodu : "",
                     BesinciHakem = match.Referee5 + ", " + match.Referee6 + (match.Referee7 != null ? ", " + match.Referee7 : ""),
                     DorduncuHakem = match.Referee4,
                     Hakem = match.Referee,
                     YardimciHakemler = match.Referee2 + ", " + match.Referee3,
                     Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
-                    Takim1 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.HomeId).ToList()[0].TakımAdı + "]]" : "",
-                    Takim2 = adres != null ? "[[" + teams.Where(a => a.TFFId == match.AwayId).ToList()[0].TakımAdı + "]]" : "",
-                    Sonuc = match.HomeMS + " - " + match.AwayMS +(match.IsDefaultWin?"<br> (hükmen)":""),
+                    Takim1 = adres != null ? "[[" + teams.FirstOrDefault(a => a.TFFId == match.HomeId)?.TakımAdı + "]]" : "",
+                    Takim2 = adres != null ? "[[" + teams.FirstOrDefault(a => a.TFFId == match.AwayId)?.TakımAdı + "]]" : "",
+                    Sonuc = match.HomeMS + " - " + match.AwayMS + (match.IsDefaultWin ? "<br> (hükmen)" : ""),
                     Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
                     Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
-                    Stadyum = adres != null ? "[[" +(match.StadiumId!=""? await playerName.QID(Convert.ToInt32(match.StadiumId)):"") + "]]" : "",
-                    Yer = adres != null ? "[[" + (match.StadiumId != "" ? await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)):"") + "]]" : "",
+                    Stadyum = adres != null ? "[[" + (match.StadiumId != "" ? await playerName.QID(Convert.ToInt32(match.StadiumId)) : "") + "]]" : "",
+                    Yer = adres != null ? "[[" + (match.StadiumId != "" ? await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) : "") + "]]" : "",
                     Goller1 = richTextBoxes[0].Text,
                     Goller2 = richTextBoxes[1].Text,
                     Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()
                 };
 
-
+                Directory.CreateDirectory(setting5.Replace(".txt", "") );
                 File.WriteAllText(setting5.Replace(".txt", "") + "\\" + matchdetails.MDetail.Replace("|", "") + ".txt", Convert.ToBoolean(setting1) ? matchdetails.ToString() : matchdetails.ToString2());
 
                 if (i % Convert.ToInt32(setting2) == 0)
