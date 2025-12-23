@@ -542,7 +542,7 @@ class App {
         for (const id of missingPlayers) {
             const item = document.createElement('span');
             item.className = 'missing-id-item';
-            item.innerHTML = `<a href="https://www.mackolik.com/oyuncu/x/${id}" target="_blank">${id}</a>`;
+            item.innerHTML = `<a href="https://arsiv.mackolik.com/Futbolcu/${id}/" target="_blank">${id}</a>`;
             this.elements.missingPlayersList.appendChild(item);
         }
     }

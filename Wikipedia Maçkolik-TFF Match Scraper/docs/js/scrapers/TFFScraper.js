@@ -7,7 +7,7 @@ class TFFScraper {
         // CORS proxy options - custom worker should be first for Turkish encoding support
         // IMPORTANT: Replace 'YOUR_WORKER_NAME' with your Cloudflare Worker subdomain
         // Example: 'https://tff-proxy.your-name.workers.dev/?url='
-        this.customProxyUrl = null; // Set your Cloudflare Worker URL here
+        this.customProxyUrl = "https://tffproxy.arfatihim.workers.dev/"; // Set your Cloudflare Worker URL here
 
         // Fallback proxies (may have encoding issues)
         this.proxyUrls = [
@@ -50,7 +50,7 @@ class TFFScraper {
         // Try custom Cloudflare Worker proxy first (best encoding support)
         if (this.customProxyUrl) {
             try {
-                const proxyUrl = this.customProxyUrl + encodeURIComponent(tffUrl);
+                const proxyUrl = this.customProxyUrl + "?url=" + encodeURIComponent(tffUrl);
                 const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
 
                 if (response.ok) {
@@ -192,18 +192,49 @@ class TFFScraper {
 
     /**
      * Turkish title case conversion
+     * Properly handles Turkish I/ı and İ/i letter pairs
      */
     toTitleCaseTurkish(str) {
-        const turkishLower = 'abcçdefgğhıijklmnoöprsştuüvyz';
-        const turkishUpper = 'ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ';
+        // First convert to Turkish lowercase
+        const lowerStr = this.toLowerCaseTurkish(str);
 
-        return str.toLowerCase().split(' ').map(word => {
+        // Then capitalize first letter of each word
+        return lowerStr.split(' ').map(word => {
             if (!word) return word;
             const firstChar = word.charAt(0);
-            const upperIndex = turkishLower.indexOf(firstChar);
-            const upperChar = upperIndex >= 0 ? turkishUpper[upperIndex] : firstChar.toUpperCase();
+            const upperChar = this.toUpperCaseTurkishChar(firstChar);
             return upperChar + word.slice(1);
         }).join(' ');
+    }
+
+    /**
+     * Convert string to Turkish lowercase
+     */
+    toLowerCaseTurkish(str) {
+        let result = '';
+        for (const char of str) {
+            if (char === 'I') {
+                result += 'ı'; // Turkish dotless I becomes dotless ı
+            } else if (char === 'İ') {
+                result += 'i'; // Turkish dotted İ becomes dotted i
+            } else {
+                result += char.toLowerCase();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Convert single character to Turkish uppercase
+     */
+    toUpperCaseTurkishChar(char) {
+        if (char === 'i') {
+            return 'İ'; // Turkish dotted i becomes dotted İ
+        } else if (char === 'ı') {
+            return 'I'; // Turkish dotless ı becomes dotless I
+        } else {
+            return char.toUpperCase();
+        }
     }
 
     /**
