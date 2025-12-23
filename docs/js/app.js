@@ -397,13 +397,20 @@ class App {
                 combinedOutput += `<!-- ${weekNumber}. Hafta -->\n`;
             }
 
-            this.elements.currentMatch.textContent = `İşleniyor: ${i + 1}/${actualEnd} - TFF=${tffId}, Maçkolik=${mackolikId}`;
+            this.elements.currentMatch.textContent = `İşleniyor: ${i + 1}/${actualEnd} - TFF=${tffId}`;
 
             try {
                 // Scrape TFF data
                 let matchObj;
                 try {
                     matchObj = await this.tffScraper.scrape(tffId);
+
+                    // Find team names and update progress display
+                    const homeTeam = Team.findByTffId(this.teams, matchObj.homeId);
+                    const awayTeam = Team.findByTffId(this.teams, matchObj.awayId);
+                    const homeName = homeTeam?.takımAdı || matchObj.homeId;
+                    const awayName = awayTeam?.takımAdı || matchObj.awayId;
+                    this.elements.currentMatch.innerHTML = `İşleniyor: <strong>${homeName}</strong> vs <strong>${awayName}</strong> (${i + 1}/${actualEnd})`;
                 } catch (error) {
                     this.addError(`TFF hatası (${tffId}): ${error.message}`);
                     matchObj = new Match();
