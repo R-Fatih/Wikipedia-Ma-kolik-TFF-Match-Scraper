@@ -4,13 +4,15 @@
  */
 class TFFScraper {
     constructor() {
-        // CORS proxy options
+        // Multiple CORS proxy options for fallback
         this.proxyUrls = [
+            'https://api.allorigins.win/raw?url=',
             'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url='
+            'https://api.codetabs.com/v1/proxy?quest=',
+            'https://thingproxy.freeboard.io/fetch/'
         ];
         this.currentProxyIndex = 0;
-        this.timeout = 15000;
+        this.timeout = 20000; // Increased timeout
     }
 
     /**
