@@ -406,8 +406,8 @@ class App {
                     matchObj = await this.tffScraper.scrape(tffId);
 
                     // Find team names and update progress display
-                    const homeTeam = Team.findByTffId(this.teams, matchObj.homeId);
-                    const awayTeam = Team.findByTffId(this.teams, matchObj.awayId);
+                    const homeTeam = Team.findByTFFId(this.teams, matchObj.homeId);
+                    const awayTeam = Team.findByTFFId(this.teams, matchObj.awayId);
                     const homeName = homeTeam?.takımAdı || matchObj.homeId;
                     const awayName = awayTeam?.takımAdı || matchObj.awayId;
                     this.elements.currentMatch.innerHTML = `İşleniyor: <strong>${homeName}</strong> vs <strong>${awayName}</strong> (${i + 1}/${actualEnd})`;
