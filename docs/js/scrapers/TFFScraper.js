@@ -6,9 +6,9 @@ class TFFScraper {
     constructor() {
         // Multiple CORS proxy options for fallback
         this.proxyUrls = [
+			'https://api.codetabs.com/v1/proxy?quest=',
             'https://api.allorigins.win/raw?url=',
             'https://corsproxy.io/?',
-            'https://api.codetabs.com/v1/proxy?quest=',
             'https://thingproxy.freeboard.io/fetch/'
         ];
         this.currentProxyIndex = 0;
