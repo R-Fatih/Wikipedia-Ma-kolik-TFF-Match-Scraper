@@ -440,7 +440,7 @@ class App {
                 }
 
                 // Get Maçkolik events
-                let events = { homeGoals: '', awayGoals: '', failed: false };
+                let events = { homeGoals: '', awayGoals: '', homeScore: null, awayScore: null, failed: false };
                 if (mackolikId) {
                     try {
                         events = await this.mackolikScraper.getMatchEvents(mackolikId);
@@ -448,6 +448,12 @@ class App {
                         this.addError(`Maçkolik hatası (${mackolikId}): ${error.message}`);
                         events.failed = true;
                     }
+                }
+
+                // Use Maçkolik scores if available (more reliable)
+                if (events.homeScore !== null && events.awayScore !== null) {
+                    matchObj.homeMS = events.homeScore;
+                    matchObj.awayMS = events.awayScore;
                 }
 
                 // Format for Wikipedia
@@ -651,13 +657,19 @@ class App {
                 this.elements.currentMatch.innerHTML = `Tekrar deneniyor: <strong>${homeName}</strong> vs <strong>${awayName}</strong>`;
 
                 // Get Maçkolik events
-                let events = { homeGoals: '', awayGoals: '' };
+                let events = { homeGoals: '', awayGoals: '', homeScore: null, awayScore: null };
                 if (mackolikId) {
                     try {
                         events = await this.mackolikScraper.getMatchEvents(mackolikId);
                     } catch (error) {
                         console.warn(`Maçkolik retry hatası (${mackolikId}): ${error.message}`);
                     }
+                }
+
+                // Use Maçkolik scores if available
+                if (events.homeScore !== null && events.awayScore !== null) {
+                    matchObj.homeMS = events.homeScore;
+                    matchObj.awayMS = events.awayScore;
                 }
 
                 // Format for Wikipedia

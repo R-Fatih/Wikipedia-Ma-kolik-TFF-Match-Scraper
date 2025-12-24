@@ -122,6 +122,17 @@ class MackolikScraper {
     async processEvents(json) {
         const matchDetails = [];
 
+        // Extract score from d.s field (e.g., "2 - 0")
+        let homeScore = null;
+        let awayScore = null;
+        if (json.d && json.d.s) {
+            const scoreParts = json.d.s.split(' - ');
+            if (scoreParts.length === 2) {
+                homeScore = parseInt(scoreParts[0].trim());
+                awayScore = parseInt(scoreParts[1].trim());
+            }
+        }
+
         // Process events for both teams
         if (json.e && Array.isArray(json.e)) {
             for (const event of json.e) {
@@ -206,7 +217,7 @@ class MackolikScraper {
         const homeGoals = this.formatEvents(homeEvents, homePlayerNames, true);
         const awayGoals = this.formatEvents(awayEvents, awayPlayerNames, false);
 
-        return { homeGoals, awayGoals };
+        return { homeGoals, awayGoals, homeScore, awayScore };
     }
 
     /**
