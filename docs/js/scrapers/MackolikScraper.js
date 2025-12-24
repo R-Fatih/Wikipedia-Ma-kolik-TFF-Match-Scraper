@@ -3,9 +3,13 @@
  */
 class MackolikScraper {
     constructor() {
-        // CORS proxy options
+        // Custom Cloudflare Worker proxy (best option)
+        // IMPORTANT: Replace with your Cloudflare Worker URL if needed
+        this.customProxyUrl = "https://tffproxy.arfatihim.workers.dev/";
+
+        // Fallback CORS proxy options
         this.proxyUrls = [
-		    'https://api.codetabs.com/v1/proxy?quest=',
+            'https://api.codetabs.com/v1/proxy?quest=',
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url='
         ];
@@ -41,27 +45,64 @@ class MackolikScraper {
         const mackolikUrl = `https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=${matchId}&s=0`;
 
         let json = null;
-        let attempts = 0;
-        const maxAttempts = this.proxyUrls.length * 2;
 
-        while (!json && attempts < maxAttempts) {
+        // 1. Try custom Cloudflare Worker proxy first
+        if (this.customProxyUrl) {
             try {
-                const proxyUrl = this.getProxyUrl() + encodeURIComponent(mackolikUrl);
+                const proxyUrl = this.customProxyUrl + "?url=" + encodeURIComponent(mackolikUrl);
                 const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const text = await response.text();
-                json = JSON.parse(text);
+                if (response.ok) {
+                    const text = await response.text();
+                    json = JSON.parse(text);
+                    console.log('Maçkolik: Using custom Cloudflare Worker proxy');
+                }
             } catch (error) {
-                console.warn(`Maçkolik proxy ${this.currentProxyIndex} failed:`, error.message);
-                this.switchProxy();
-                attempts++;
+                console.warn('Maçkolik custom proxy failed:', error.message);
+            }
+        }
+
+        // 2. Fallback to public proxies if custom didn't work
+        if (!json) {
+            let attempts = 0;
+            const maxAttempts = this.proxyUrls.length * 2;
+
+            while (!json && attempts < maxAttempts) {
+                try {
+                    const proxyUrl = this.getProxyUrl() + encodeURIComponent(mackolikUrl);
+                    const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const text = await response.text();
+                    json = JSON.parse(text);
+                    console.log(`Maçkolik: Using public proxy ${this.currentProxyIndex}`);
+                } catch (error) {
+                    console.warn(`Maçkolik proxy ${this.currentProxyIndex} failed:`, error.message);
+                    this.switchProxy();
+                    attempts++;
+                }
+            }
+        }
+
+        // 3. Last resort: Try direct URL (may work in some environments)
+        if (!json) {
+            try {
+                console.log('Maçkolik: Trying direct URL...');
+                const response = await this.fetchWithTimeout(mackolikUrl, this.timeout);
+
+                if (response.ok) {
+                    const text = await response.text();
+                    json = JSON.parse(text);
+                    console.log('Maçkolik: Direct URL successful');
+                }
+            } catch (error) {
+                console.warn('Maçkolik direct URL failed:', error.message);
             }
         }
 
         if (!json) {
-            console.error('Maçkolik API bağlantısı başarısız');
+            console.error('Maçkolik API bağlantısı başarısız (tüm yöntemler denendi)');
             return { homeGoals: '', awayGoals: '' };
         }
 
