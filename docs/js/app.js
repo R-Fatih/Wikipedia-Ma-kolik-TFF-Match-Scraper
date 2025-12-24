@@ -17,6 +17,7 @@ class App {
         this.shouldStop = false;
         this.matchOutputs = [];
         this.errors = [];
+        this.failedMatches = []; // Matches that failed to connect
         this.weekSelectionType = 'single'; // 'single' or 'range'
 
         // DOM Elements
@@ -45,6 +46,9 @@ class App {
             missingSection: document.getElementById('missingSection'),
             missingPlayersList: document.getElementById('missingPlayersList'),
             copyMissingBtn: document.getElementById('copyMissingBtn'),
+            failedMatchesSection: document.getElementById('failedMatchesSection'),
+            failedMatchesList: document.getElementById('failedMatchesList'),
+            retryFailedBtn: document.getElementById('retryFailedBtn'),
             outputSection: document.getElementById('outputSection'),
             combinedOutput: document.getElementById('combinedOutput'),
             matchOutputs: document.getElementById('matchOutputs'),
@@ -143,6 +147,9 @@ class App {
 
         // Download button
         this.elements.downloadBtn.addEventListener('click', () => this.downloadOutput());
+
+        // Retry failed matches button
+        this.elements.retryFailedBtn.addEventListener('click', () => this.retryFailedMatches());
 
         // Tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -356,6 +363,7 @@ class App {
         this.shouldStop = false;
         this.matchOutputs = [];
         this.errors = [];
+        this.failedMatches = [];
 
         // Update UI
         this.elements.startBtn.style.display = 'none';
@@ -364,6 +372,8 @@ class App {
         this.elements.progressSection.style.display = 'block';
         this.elements.errorSection.style.display = 'none';
         this.elements.errorList.innerHTML = '';
+        this.elements.failedMatchesSection.style.display = 'none';
+        this.elements.failedMatchesList.innerHTML = '';
         this.elements.missingSection.style.display = 'none';
         this.elements.missingPlayersList.innerHTML = '';
         this.elements.outputSection.style.display = 'none';
@@ -402,6 +412,7 @@ class App {
             try {
                 // Scrape TFF data
                 let matchObj;
+                let tffFailed = false;
                 try {
                     matchObj = await this.tffScraper.scrape(tffId);
 
@@ -413,17 +424,29 @@ class App {
                     this.elements.currentMatch.innerHTML = `İşleniyor: <strong>${homeName}</strong> vs <strong>${awayName}</strong> (${i + 1}/${actualEnd})`;
                 } catch (error) {
                     this.addError(`TFF hatası (${tffId}): ${error.message}`);
-                    matchObj = new Match();
-                    matchObj.tffId = parseInt(tffId);
+                    tffFailed = true;
+                }
+
+                // If TFF failed, add to failed list and skip
+                if (tffFailed) {
+                    this.failedMatches.push({
+                        index: i,
+                        tffId,
+                        mackolikId,
+                        weekNumber,
+                        reason: 'TFF bağlantı hatası'
+                    });
+                    continue;
                 }
 
                 // Get Maçkolik events
-                let events = { homeGoals: '', awayGoals: '' };
+                let events = { homeGoals: '', awayGoals: '', failed: false };
                 if (mackolikId) {
                     try {
                         events = await this.mackolikScraper.getMatchEvents(mackolikId);
                     } catch (error) {
                         this.addError(`Maçkolik hatası (${mackolikId}): ${error.message}`);
+                        events.failed = true;
                     }
                 }
 
@@ -471,10 +494,13 @@ class App {
         // Show missing IDs if any
         this.renderMissingIds();
 
+        // Show failed matches if any
+        this.renderFailedMatches();
+
         this.showToast(
             this.shouldStop
                 ? 'İşlem durduruldu'
-                : `${this.matchOutputs.length} maç işlendi`,
+                : `${this.matchOutputs.length} maç işlendi` + (this.failedMatches.length > 0 ? `, ${this.failedMatches.length} başarısız` : ''),
             this.shouldStop ? 'warning' : 'success'
         );
     }
@@ -552,6 +578,140 @@ class App {
             item.innerHTML = `<a href="https://arsiv.mackolik.com/Futbolcu/${id}/" target="_blank">${id}</a>`;
             this.elements.missingPlayersList.appendChild(item);
         }
+    }
+
+    /**
+     * Render failed matches section
+     */
+    renderFailedMatches() {
+        if (this.failedMatches.length === 0) {
+            this.elements.failedMatchesSection.style.display = 'none';
+            return;
+        }
+
+        this.elements.failedMatchesSection.style.display = 'block';
+        this.elements.failedMatchesList.innerHTML = '';
+
+        for (const match of this.failedMatches) {
+            const item = document.createElement('div');
+            item.className = 'error-item';
+            item.innerHTML = `
+                <strong>TFF ID: ${match.tffId}</strong>
+                ${match.mackolikId ? `| Maçkolik ID: ${match.mackolikId}` : ''}
+                | Hafta: ${match.weekNumber}
+                | Sebep: ${match.reason}
+            `;
+            this.elements.failedMatchesList.appendChild(item);
+        }
+    }
+
+    /**
+     * Retry failed matches
+     */
+    async retryFailedMatches() {
+        if (this.isRunning || this.failedMatches.length === 0) return;
+
+        const matchesToRetry = [...this.failedMatches];
+        const includeVAR = this.elements.varEnabled.checked;
+        const matchesPerWeek = this.selectedLeague.matchesPerWeek;
+
+        // Reset state for retry
+        this.isRunning = true;
+        this.shouldStop = false;
+        this.failedMatches = [];
+
+        // Update UI
+        this.elements.retryFailedBtn.disabled = true;
+        this.elements.retryFailedBtn.innerHTML = '<span>⏳</span> Deneniyor...';
+        this.elements.progressSection.style.display = 'block';
+
+        let retrySuccess = 0;
+        let retryFailed = 0;
+
+        for (let j = 0; j < matchesToRetry.length; j++) {
+            if (this.shouldStop) break;
+
+            const failedMatch = matchesToRetry[j];
+            const { tffId, mackolikId, weekNumber, index } = failedMatch;
+
+            // Update progress
+            const progress = ((j + 1) / matchesToRetry.length) * 100;
+            this.updateProgress(progress, j + 1, matchesToRetry.length);
+            this.elements.currentMatch.textContent = `Tekrar deneniyor: TFF=${tffId} (${j + 1}/${matchesToRetry.length})`;
+
+            try {
+                // Scrape TFF data
+                const matchObj = await this.tffScraper.scrape(tffId);
+
+                // Find team names
+                const homeTeam = Team.findByTFFId(this.teams, matchObj.homeId);
+                const awayTeam = Team.findByTFFId(this.teams, matchObj.awayId);
+                const homeName = homeTeam?.takımAdı || matchObj.homeId;
+                const awayName = awayTeam?.takımAdı || matchObj.awayId;
+                this.elements.currentMatch.innerHTML = `Tekrar deneniyor: <strong>${homeName}</strong> vs <strong>${awayName}</strong>`;
+
+                // Get Maçkolik events
+                let events = { homeGoals: '', awayGoals: '' };
+                if (mackolikId) {
+                    try {
+                        events = await this.mackolikScraper.getMatchEvents(mackolikId);
+                    } catch (error) {
+                        console.warn(`Maçkolik retry hatası (${mackolikId}): ${error.message}`);
+                    }
+                }
+
+                // Format for Wikipedia
+                const matchDetails = await this.wikiFormatter.formatMatch(
+                    matchObj,
+                    this.teams,
+                    events,
+                    weekNumber,
+                    includeVAR
+                );
+
+                const output = matchDetails.getOutput(includeVAR);
+
+                this.matchOutputs.push({
+                    tffId,
+                    mackolikId,
+                    output,
+                    mDetail: matchDetails.mDetail
+                });
+
+                // Update combined output
+                const currentOutput = this.elements.combinedOutput.value;
+                this.elements.combinedOutput.value = currentOutput + (currentOutput ? '\n\n' : '') + output;
+
+                retrySuccess++;
+            } catch (error) {
+                // Still failed
+                this.failedMatches.push({
+                    index,
+                    tffId,
+                    mackolikId,
+                    weekNumber,
+                    reason: 'TFF bağlantı hatası (tekrar)'
+                });
+                retryFailed++;
+            }
+        }
+
+        // Finish retry
+        this.isRunning = false;
+        this.elements.retryFailedBtn.disabled = false;
+        this.elements.retryFailedBtn.innerHTML = '<span>🔄</span> Başarısız Maçları Tekrar Dene';
+        this.elements.currentMatch.textContent = `Tamamlandı! ${retrySuccess} başarılı, ${retryFailed} başarısız`;
+
+        // Refresh outputs
+        this.renderIndividualOutputs();
+        this.renderFailedMatches();
+
+        this.showToast(
+            retrySuccess > 0
+                ? `${retrySuccess} maç başarıyla işlendi` + (retryFailed > 0 ? `, ${retryFailed} hâlâ başarısız` : '')
+                : 'Hiçbir maç işlenemedi',
+            retrySuccess > 0 ? 'success' : 'error'
+        );
     }
 
     /**

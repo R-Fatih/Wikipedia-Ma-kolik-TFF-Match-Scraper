@@ -144,6 +144,22 @@
                 <div class="error-list" id="errorList"></div>
             </section>
 
+            <!-- Failed Matches (Connection Failed) -->
+            <section class="card error-card" id="failedMatchesSection" style="display: none;">
+                <h2 class="card-title">
+                    <span class="icon">🔄</span>
+                    Bağlantı Kurulamayan Maçlar
+                </h2>
+                <p class="card-description">Bu maçlara TFF veya Maçkolik üzerinden bağlanılamadı. Tekrar denemek için
+                    aşağıdaki butonu kullanın.</p>
+                <div class="failed-matches-list" id="failedMatchesList"></div>
+                <div class="output-actions" style="margin-top: 15px;">
+                    <button class="btn btn-primary" id="retryFailedBtn">
+                        <span>🔄</span> Başarısız Maçları Tekrar Dene
+                    </button>
+                </div>
+            </section>
+
             <!-- Missing Wikidata IDs -->
             <section class="card missing-card" id="missingSection" style="display: none;">
                 <h2 class="card-title">

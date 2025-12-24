@@ -133,10 +133,10 @@ class MackolikScraper {
 
                 switch (eventType) {
                     case '1':
-                        if (eventDetail === '2') {
+                        if (eventDetail == '2') {
                             eventName = 'baspenaltı';
                             eventId = 1;
-                        } else if (eventDetail === '3') {
+                        } else if (eventDetail == '3') {
                             eventName = 'gol'; // kendi kalesine
                             eventId = 2;
                         } else {
@@ -149,7 +149,7 @@ class MackolikScraper {
                         eventId = 3;
                         break;
                     case '3':
-                        if (eventDetail === '1') {
+                        if (eventDetail == '1') {
                             eventName = 'kırmızı kart'; // çift sarıdan
                             eventId = 4;
                         } else {
