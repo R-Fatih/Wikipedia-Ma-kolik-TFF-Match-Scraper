@@ -9,9 +9,7 @@ class MackolikScraper {
 
         // Fallback CORS proxy options
         this.proxyUrls = [
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url='
+            'https://api.codetabs.com/v1/proxy?quest='
         ];
         this.currentProxyIndex = 0;
         this.timeout = 120000;

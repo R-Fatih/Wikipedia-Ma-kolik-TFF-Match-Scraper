@@ -11,10 +11,7 @@ class TFFScraper {
 
         // Fallback proxies (may have encoding issues)
         this.proxyUrls = [
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://thingproxy.freeboard.io/fetch/'
+            'https://api.codetabs.com/v1/proxy?quest='
         ];
         this.currentProxyIndex = 0;
         this.timeout = 20000;
