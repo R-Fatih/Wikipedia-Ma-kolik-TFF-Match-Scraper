@@ -215,22 +215,37 @@ class MackolikScraper {
     formatEvents(events, playerNames, isHome) {
         if (events.length === 0) return '';
 
-        // Group by player
+        // Group by player and track first event minute
         const grouped = {};
+        const firstEventMinute = {}; // Track first event minute for each player
+
         for (const event of events) {
             if (!grouped[event.playerId]) {
                 grouped[event.playerId] = [];
+                firstEventMinute[event.playerId] = event.eventMinute;
+            } else {
+                // Update if this event is earlier
+                if (event.eventMinute < firstEventMinute[event.playerId]) {
+                    firstEventMinute[event.playerId] = event.eventMinute;
+                }
             }
             grouped[event.playerId].push(event);
         }
 
+        // Sort player IDs by their first event minute
+        const playerIds = Object.keys(grouped).sort((a, b) => {
+            return firstEventMinute[a] - firstEventMinute[b];
+        });
+
         const lines = [];
-        const playerIds = Object.keys(grouped);
 
         for (let i = 0; i < playerIds.length; i++) {
             const playerId = playerIds[i];
             const playerEvents = grouped[playerId];
             const wikiName = playerNames[playerId];
+
+            // Sort player's events by minute
+            playerEvents.sort((a, b) => a.eventMinute - b.eventMinute);
 
             // Group events by event type
             const eventsByType = {};
