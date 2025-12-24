@@ -50,7 +50,7 @@ class MackolikScraper {
 
                 if (response.ok) {
                     const text = await response.text();
-                    const json = JSON.parse(text);
+                    const json = JSON.parse(this.sanitizeJson(text));
                     console.log('Maçkolik: Using custom Cloudflare Worker proxy');
                     // Success - return immediately without trying other proxies
                     return await this.processEvents(json);
@@ -73,7 +73,7 @@ class MackolikScraper {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const text = await response.text();
-                json = JSON.parse(text);
+                json = JSON.parse(this.sanitizeJson(text));
                 console.log(`Maçkolik: Using public proxy ${this.currentProxyIndex}`);
                 // Success - return immediately
                 return await this.processEvents(json);
@@ -91,7 +91,7 @@ class MackolikScraper {
 
             if (response.ok) {
                 const text = await response.text();
-                const json = JSON.parse(text);
+                const json = JSON.parse(this.sanitizeJson(text));
                 console.log('Maçkolik: Direct URL successful');
                 return await this.processEvents(json);
             }
@@ -101,6 +101,19 @@ class MackolikScraper {
 
         console.error('Maçkolik API bağlantısı başarısız (tüm yöntemler denendi)');
         return { homeGoals: '', awayGoals: '' };
+    }
+
+    /**
+     * Sanitize JSON string by fixing invalid escape sequences
+     * Maçkolik sometimes returns backslash-escaped single quotes which is invalid JSON
+     */
+    sanitizeJson(text) {
+        // Fix invalid escape sequences:
+        // \' is not valid in JSON, replace with just '
+        // Also handle other potential issues
+        return text
+            .replace(/\\'/g, "'")  // \' -> '
+            .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
     }
 
     /**
