@@ -42,8 +42,6 @@ class MackolikScraper {
 
         const mackolikUrl = `https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=${matchId}&s=0`;
 
-        let json = null;
-
         // 1. Try custom Cloudflare Worker proxy first
         if (this.customProxyUrl) {
             try {
@@ -52,8 +50,10 @@ class MackolikScraper {
 
                 if (response.ok) {
                     const text = await response.text();
-                    json = JSON.parse(text);
+                    const json = JSON.parse(text);
                     console.log('Maçkolik: Using custom Cloudflare Worker proxy');
+                    // Success - return immediately without trying other proxies
+                    return await this.processEvents(json);
                 }
             } catch (error) {
                 console.warn('Maçkolik custom proxy failed:', error.message);
@@ -61,50 +61,46 @@ class MackolikScraper {
         }
 
         // 2. Fallback to public proxies if custom didn't work
-        if (!json) {
-            let attempts = 0;
-            const maxAttempts = this.proxyUrls.length * 2;
+        let json = null;
+        let attempts = 0;
+        const maxAttempts = this.proxyUrls.length * 2;
 
-            while (!json && attempts < maxAttempts) {
-                try {
-                    const proxyUrl = this.getProxyUrl() + encodeURIComponent(mackolikUrl);
-                    const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
+        while (!json && attempts < maxAttempts) {
+            try {
+                const proxyUrl = this.getProxyUrl() + encodeURIComponent(mackolikUrl);
+                const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
 
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                    const text = await response.text();
-                    json = JSON.parse(text);
-                    console.log(`Maçkolik: Using public proxy ${this.currentProxyIndex}`);
-                } catch (error) {
-                    console.warn(`Maçkolik proxy ${this.currentProxyIndex} failed:`, error.message);
-                    this.switchProxy();
-                    attempts++;
-                }
+                const text = await response.text();
+                json = JSON.parse(text);
+                console.log(`Maçkolik: Using public proxy ${this.currentProxyIndex}`);
+                // Success - return immediately
+                return await this.processEvents(json);
+            } catch (error) {
+                console.warn(`Maçkolik proxy ${this.currentProxyIndex} failed:`, error.message);
+                this.switchProxy();
+                attempts++;
             }
         }
 
         // 3. Last resort: Try direct URL (may work in some environments)
-        if (!json) {
-            try {
-                console.log('Maçkolik: Trying direct URL...');
-                const response = await this.fetchWithTimeout(mackolikUrl, this.timeout);
+        try {
+            console.log('Maçkolik: Trying direct URL...');
+            const response = await this.fetchWithTimeout(mackolikUrl, this.timeout);
 
-                if (response.ok) {
-                    const text = await response.text();
-                    json = JSON.parse(text);
-                    console.log('Maçkolik: Direct URL successful');
-                }
-            } catch (error) {
-                console.warn('Maçkolik direct URL failed:', error.message);
+            if (response.ok) {
+                const text = await response.text();
+                const json = JSON.parse(text);
+                console.log('Maçkolik: Direct URL successful');
+                return await this.processEvents(json);
             }
+        } catch (error) {
+            console.warn('Maçkolik direct URL failed:', error.message);
         }
 
-        if (!json) {
-            console.error('Maçkolik API bağlantısı başarısız (tüm yöntemler denendi)');
-            return { homeGoals: '', awayGoals: '' };
-        }
-
-        return await this.processEvents(json);
+        console.error('Maçkolik API bağlantısı başarısız (tüm yöntemler denendi)');
+        return { homeGoals: '', awayGoals: '' };
     }
 
     /**
