@@ -25,7 +25,7 @@ const LEAGUES = {
          id: 'tff1lig2526',
          name: 'TFF 1. Lig 2025-26 Play-Off',
          shortName: '1. Lig POF',
-         dataFile: 'data/1l2526pof.txt',
+         dataFile: 'data/1l2526_pof.txt',
          matchesPerWeek: 5,
          totalWeeks: 1,
          season: '2025-26'
