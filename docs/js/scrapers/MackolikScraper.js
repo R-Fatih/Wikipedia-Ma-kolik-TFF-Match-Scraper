@@ -267,9 +267,20 @@ class MackolikScraper {
                 eventsByType[event.eventId].push(event);
             }
 
-            let eventTexts = [];
+            // Create an array of groups and sort them by the minute of their first event
+            const eventGroups = [];
             for (const eventId in eventsByType) {
-                const typeEvents = eventsByType[eventId];
+                eventGroups.push({
+                    eventId: parseInt(eventId),
+                    events: eventsByType[eventId],
+                    firstMinute: eventsByType[eventId][0].eventMinute
+                });
+            }
+            eventGroups.sort((a, b) => a.firstMinute - b.firstMinute);
+
+            let eventTexts = [];
+            for (const group of eventGroups) {
+                const typeEvents = group.events;
                 const eventParts = typeEvents.map(e => {
                     let part = `{{${e.eventName}|`;
                     if (e.eventId === 4) part += '1|'; // çift sarıdan
