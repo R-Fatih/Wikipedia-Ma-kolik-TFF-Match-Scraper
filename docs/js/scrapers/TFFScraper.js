@@ -40,7 +40,7 @@ class TFFScraper {
         const match = new Match();
         match.tffId = parseInt(macId);
 
-        const tffUrl = `https://tff.org/Default.aspx?pageID=29&macID=${macId}`;
+        const tffUrl = `http://tff.org/Default.aspx?pageID=29&macID=${macId}`;
 
         let html = null;
 
