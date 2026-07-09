@@ -29,7 +29,16 @@ const LEAGUES = {
          matchesPerWeek: 5,
          totalWeeks: 1,
          season: '2025-26'
-     }
+     },
+    stsl2627: {
+        id: 'stsl2627',
+        name: 'Süper Lig 2026-27',
+        shortName: 'Süper Lig',
+        dataFile: 'data/stsl2627.txt',
+        matchesPerWeek: 9,
+        totalWeeks: 34,
+        season: '2026-27'
+    },
 };
 
 // Export for use in other modules
