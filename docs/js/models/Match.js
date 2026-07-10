@@ -17,6 +17,7 @@ class Match {
         this.referee7 = '';
         this.homeMS = 0;
         this.awayMS = 0;
+        this.isScoreSet = false;
         this.date = new Date();
         this.isDefaultWin = false;
     }

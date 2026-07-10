@@ -19,6 +19,7 @@ namespace TFFScraper
         public string Referee7 { get; set; }
         public int HomeMS { get; set; }
         public int AwayMS { get; set; }
+        public bool IsScoreSet { get; set; }
         public DateTime Date { get; set; }
         public bool IsDefaultWin { get; set; }
 

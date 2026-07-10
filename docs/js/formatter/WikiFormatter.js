@@ -55,9 +55,13 @@ class WikiFormatter {
         details.takim2 = `[[${awayTeamName}]]`;
 
         // Score
-        details.sonuc = `${match.homeMS} - ${match.awayMS}`;
-        if (match.isDefaultWin) {
-            details.sonuc += '<br> (hükmen)';
+        if (match.isScoreSet) {
+            details.sonuc = `${match.homeMS} - ${match.awayMS}`;
+            if (match.isDefaultWin) {
+                details.sonuc += '<br> (hükmen)';
+            }
+        } else {
+            details.sonuc = '';
         }
 
         // Report link
@@ -74,7 +78,7 @@ class WikiFormatter {
 
             try {
                 const placeName = await this.stadiumPlace.getStadiumPlace(parseInt(match.stadiumId));
-                details.yer = `[[${placeName}]]`;
+                details.yer = placeName;
             } catch (e) {
                 details.yer = '';
             }

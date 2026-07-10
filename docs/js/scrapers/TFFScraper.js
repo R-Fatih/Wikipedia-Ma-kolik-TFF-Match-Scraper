@@ -152,11 +152,14 @@ class TFFScraper {
         const homeScoreEl = doc.querySelector(selectors.homeScore);
         const awayScoreEl = doc.querySelector(selectors.awayScore);
 
-        if (homeScoreEl) {
+        match.isScoreSet = false;
+
+        if (homeScoreEl && homeScoreEl.textContent.trim() !== '') {
             match.homeMS = parseInt(homeScoreEl.textContent.trim()) || 0;
-        }
-        if (awayScoreEl) {
-            match.awayMS = parseInt(awayScoreEl.textContent.trim()) || 0;
+            if (awayScoreEl && awayScoreEl.textContent.trim() !== '') {
+                match.awayMS = parseInt(awayScoreEl.textContent.trim()) || 0;
+                match.isScoreSet = true;
+            }
         }
 
         // Check for default win (hükmen)

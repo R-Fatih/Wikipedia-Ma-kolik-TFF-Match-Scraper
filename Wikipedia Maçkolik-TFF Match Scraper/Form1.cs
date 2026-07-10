@@ -1,4 +1,4 @@
-﻿using IniParser.Model;
+using IniParser.Model;
 using IniParser;
 using System;
 using System.Collections.Generic;
@@ -91,7 +91,7 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 {
 
 
-                    document = web.Load($"https://tff.org/Default.aspx?pageID=29&macID={adres}");
+                    document = web.Load($"http://tff.org/Default.aspx?pageID=29&macID={adres}");
                 }
                 catch (Exception)
                 {
@@ -115,11 +115,11 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                 {
                     match.HomeMS = Convert.ToInt32(hs[0].InnerText);
                     match.AwayMS = Convert.ToInt32(ass[0].InnerText);
+                    match.IsScoreSet = true;
                 }
                 catch (Exception)
                 {
-
-
+                    match.IsScoreSet = false;
                 }
                 try
                 {
@@ -228,8 +228,8 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                         new RichTextBox()
                     };
 
-                if (maçkolik != "")
-                    richTextBoxes = await eventDetails.Events(maçkolik, richTextBox2);
+                //if (maçkolik != "")
+                //    richTextBoxes = await eventDetails.Events(maçkolik, richTextBox2);
 
                 // Console.WriteLine("burdan" + richTextBoxes[0].Text);
                 //  Console.WriteLine("burdan" + richTextBoxes[1].Text);
@@ -260,11 +260,11 @@ namespace Wikipedia_Maçkolik_TFF_Match_Scraper
                     Rapor = $"[https://tff.org/Default.aspx?pageID=29&macID={adres} Rapor]",
                     Takim1 = adres != null ? "[[" + teams.FirstOrDefault(a => a.TFFId == match.HomeId)?.TakımAdı + "]]" : "",
                     Takim2 = adres != null ? "[[" + teams.FirstOrDefault(a => a.TFFId == match.AwayId)?.TakımAdı + "]]" : "",
-                    Sonuc = match.HomeMS + " - " + match.AwayMS + (match.IsDefaultWin ? "<br> (hükmen)" : ""),
+                    Sonuc = match.IsScoreSet ? (match.HomeMS + " - " + match.AwayMS + (match.IsDefaultWin ? "<br> (hükmen)" : "")) : "",
                     Tarih = "{{Başlangıç tarihi|" + match.Date.Year + "|" + match.Date.Month + "|" + match.Date.Day + "}}",
                     Zaman = match.Date.Hour == 0 ? "" : match.Date.ToString("t").Replace(":", "."),
                     Stadyum = adres != null ? "[[" + (match.StadiumId != "" ? await playerName.QID(Convert.ToInt32(match.StadiumId)) : "") + "]]" : "",
-                    Yer = adres != null ? "[[" + (match.StadiumId != "" ? await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) : "") + "]]" : "",
+                    Yer = adres != null ? (match.StadiumId != "" ? await stadiumPlace.QID(Convert.ToInt32(match.StadiumId)) : "") : "",
                     Goller1 = richTextBoxes[0].Text,
                     Goller2 = richTextBoxes[1].Text,
                     Tur = ((i / Convert.ToInt32(setting2)) + 1).ToString()

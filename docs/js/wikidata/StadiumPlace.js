@@ -1,5 +1,13 @@
 /**
- * StadiumPlace - Resolves stadium location (city) from Wikidata using TFF stadium ID
+ * StadiumPlace - Resolves stadium location (ilçe, il) from Wikidata using TFF stadium ID
+ * 
+ * SPARQL yaklaşımı: P131 zincirini tek sorguda takip ederek ilçe ve il bilgisini çeker.
+ * Türkçe Vikipedi makale adını (sitelink) öncelikli olarak alır, böylece "Muğla (il)" gibi
+ * başlıklar [[Muğla (il)|Muğla]] veya "Bodrum, Muğla" gibi başlıklar [[Bodrum, Muğla|Bodrum]]
+ * şeklinde doğru formatlanır.
+ * 
+ * Büyükşehir illerde:          [[İlçe]], [[İl]]
+ * Büyükşehir olmayan illerde:  [[İl]]
  */
 class StadiumPlace {
     constructor() {
@@ -7,60 +15,69 @@ class StadiumPlace {
     }
 
     /**
-     * Get city QID from stadium
-     * @param {number} id - TFF stadium ID
-     * @returns {Promise<string|null>} - City QID
+     * 30 Büyükşehir İl isimleri
      */
-    async getCityQID(id) {
-        try {
-            // Query Wikidata for entity with TFF stadium ID (P7402)
-            const sparqlQuery = `SELECT ?item WHERE { ?item wdt:P7402 "${id}" . }`;
-            const sparqlUrl = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+    static BUYUKSEHIR_ILLER = new Set([
+        'Adana', 'Ankara', 'Antalya', 'Aydın', 'Balıkesir',
+        'Bursa', 'Denizli', 'Diyarbakır', 'Erzurum', 'Eskişehir',
+        'Gaziantep', 'Hatay', 'İstanbul', 'İzmir', 'Kahramanmaraş',
+        'Kayseri', 'Kocaeli', 'Konya', 'Malatya', 'Manisa',
+        'Mardin', 'Mersin', 'Muğla', 'Ordu', 'Sakarya',
+        'Samsun', 'Şanlıurfa', 'Tekirdağ', 'Trabzon', 'Van'
+    ]);
 
-            const response = await fetch(sparqlUrl, {
-                headers: {
-                    'User-Agent': 'WikipediaMatchScraper/1.0'
-                }
-            });
-
-            if (!response.ok) throw new Error('SPARQL query failed');
-
-            const data = await response.json();
-
-            if (!data.results.bindings.length) {
-                return null;
-            }
-
-            const entityUrl = data.results.bindings[0].item.value;
-            const qid = entityUrl.replace('http://www.wikidata.org/entity/', '');
-
-            // Get entity details to find P131 (located in administrative territorial entity)
-            const entityResponse = await fetch(
-                `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&format=json&origin=*`
-            );
-
-            if (!entityResponse.ok) throw new Error('Entity fetch failed');
-
-            const entityData = await entityResponse.json();
-            const entity = entityData.entities[qid];
-
-            // Get P131 claim (located in)
-            if (entity.claims?.P131?.[0]?.mainsnak?.datavalue?.value?.id) {
-                return entity.claims.P131[0].mainsnak.datavalue.value.id;
-            }
-
-            return null;
-
-        } catch (error) {
-            console.error(`Error fetching city for stadium ID ${id}:`, error);
-            return null;
+    /**
+     * İsimden parantez içi veya virgülden sonraki eki temizler (örn: "Antalya (il)" → "Antalya", "Bodrum, Muğla" → "Bodrum")
+     */
+    static cleanName(name) {
+        if (!name) return '';
+        name = name.trim();
+        if (name.includes(',')) {
+            name = name.substring(0, name.indexOf(',')).trim();
         }
+        if (name.includes('(')) {
+            name = name.substring(0, name.indexOf('(')).trim();
+        }
+        return name;
     }
 
     /**
-     * Get stadium location name from Wikidata by TFF stadium ID
+     * Bir ismi Wikipedia wikilink formatına çevirir.
+     * Parantez veya virgül varsa pipe ile kısaltılmış halini ekler.
+     * Örn: "Ümraniye" → "[[Ümraniye]]"
+     * Örn: "Muğla (il)" → "[[Muğla (il)|Muğla]]"
+     * Örn: "Bodrum, Muğla" → "[[Bodrum, Muğla|Bodrum]]"
+     */
+    static formatWikiLink(name) {
+        if (!name) return '';
+        name = name.trim();
+        const baseName = StadiumPlace.cleanName(name);
+        if (baseName !== name && baseName.length > 0) {
+            return `[[${name}|${baseName}]]`;
+        }
+        return `[[${name}]]`;
+    }
+
+    /**
+     * Büyükşehir kontrolü (case-insensitive, parantezli ve virgüllü isimleri temizleyerek kontrol eder)
+     */
+    static isBuyuksehir(ilName) {
+        if (!ilName) return false;
+        const cleanName = StadiumPlace.cleanName(ilName);
+        for (const il of StadiumPlace.BUYUKSEHIR_ILLER) {
+            if (il.localeCompare(cleanName, 'tr', { sensitivity: 'base' }) === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get stadium location (ilçe, il) from Wikidata by TFF stadium ID
+     * Tek SPARQL sorgusunda P131 zincirini takip ederek ilçe ve il'i bulur.
+     * 
      * @param {number} id - TFF stadium ID
-     * @returns {Promise<string>} - Location name for Wikipedia
+     * @returns {Promise<string>} - Formatted location for Wikipedia (wikilink dahil)
      */
     async getStadiumPlace(id) {
         // Check cache first
@@ -69,57 +86,85 @@ class StadiumPlace {
         }
 
         try {
-            const cityQID = await this.getCityQID(id);
+            // SPARQL sorgusu:
+            // 1. P7402 ile stadyumu bul
+            // 2. P131 zincirindeki il (Q48336) varlığını bul
+            // 3. Stadyumun P131 zincirinde ilçe (Q1147395 veya Q149621) seviyesinde olan yeri bul (mahalleleri eler)
+            const sparqlQuery = `SELECT ?ilceName ?ilName WHERE {
+  ?stadium wdt:P7402 "${id}" .
+  ?stadium wdt:P131+ ?il .
+  ?il wdt:P31 wd:Q48336 .
+  OPTIONAL {
+    ?ilWP schema:about ?il ;
+          schema:isPartOf <https://tr.wikipedia.org/> ;
+          schema:name ?ilArticle .
+  }
+  OPTIONAL { ?il rdfs:label ?ilLabelTr . FILTER(LANG(?ilLabelTr) = "tr") }
+  OPTIONAL {
+    ?stadium wdt:P131+ ?ilce .
+    ?ilce wdt:P31 ?ilceType .
+    FILTER(?ilceType IN (wd:Q1147395, wd:Q149621, wd:Q3957, wd:Q515, wd:Q48336))
+    FILTER(?ilce != ?il)
+    OPTIONAL {
+      ?ilceWP schema:about ?ilce ;
+              schema:isPartOf <https://tr.wikipedia.org/> ;
+              schema:name ?ilceArticle .
+    }
+    OPTIONAL { ?ilce rdfs:label ?ilceLabelTr . FILTER(LANG(?ilceLabelTr) = "tr") }
+  }
+  BIND(COALESCE(?ilArticle, ?ilLabelTr) AS ?ilName)
+  BIND(COALESCE(?ilceArticle, ?ilceLabelTr) AS ?ilceName)
+} LIMIT 1`;
 
-            if (!cityQID) {
+            const sparqlUrl = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+
+            const response = await fetch(sparqlUrl, {
+                headers: {
+                    'User-Agent': 'WikipediaMatchScraper/1.0',
+                    'Accept': 'application/sparql-results+json'
+                }
+            });
+
+            if (!response.ok) throw new Error(`SPARQL query failed: ${response.status}`);
+
+            const data = await response.json();
+            const bindings = data?.results?.bindings;
+
+            if (!bindings || bindings.length === 0) {
+                console.warn(`SPARQL: Stadın yeri bulunamadı -- ${id}`);
                 this.cache.set(id, id.toString());
                 return id.toString();
             }
 
-            // Get city entity details
-            const entityResponse = await fetch(
-                `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${cityQID}&format=json&origin=*`
-            );
+            const binding = bindings[0];
+            const ilName = binding.ilName?.value;
+            const ilceName = binding.ilceName?.value;
 
-            if (!entityResponse.ok) throw new Error('Entity fetch failed');
-
-            const entityData = await entityResponse.json();
-            const entity = entityData.entities[cityQID];
-
-            // Try to get Turkish Wikipedia article title first, then English, then label
-            let name = null;
-
-            if (entity.sitelinks?.trwiki?.title) {
-                name = entity.sitelinks.trwiki.title;
-            } else if (entity.sitelinks?.enwiki?.title) {
-                name = entity.sitelinks.enwiki.title;
-            } else if (entity.labels?.tr?.value) {
-                name = entity.labels.tr.value;
-            } else {
-                name = id.toString();
+            if (!ilName) {
+                console.warn(`SPARQL: İl bilgisi bulunamadı -- ${id}`);
+                this.cache.set(id, id.toString());
+                return id.toString();
             }
 
-            // Format name with disambiguation if needed
-            const formattedName = this.formatName(name);
-            this.cache.set(id, formattedName);
-            return formattedName;
+            let result;
+            const cleanIlce = StadiumPlace.cleanName(ilceName);
+            const cleanIl = StadiumPlace.cleanName(ilName);
+
+            // Büyükşehir illerde ilçe + il formatı (ancak ilçe adı il adı ile aynı değilse), diğerlerinde sadece il
+            if (ilceName && cleanIlce !== cleanIl && StadiumPlace.isBuyuksehir(ilName)) {
+                result = `${StadiumPlace.formatWikiLink(ilceName)}, ${StadiumPlace.formatWikiLink(ilName)}`;
+            } else {
+                result = StadiumPlace.formatWikiLink(ilName);
+            }
+
+            this.cache.set(id, result);
+            return result;
 
         } catch (error) {
-            console.error(`Error fetching stadium place for ID ${id}:`, error);
+            console.error(`SPARQL: Stadın yeri çekilirken hata -- ${id}:`, error);
             this.cache.set(id, id.toString());
             return id.toString();
         }
-    }
-
-    /**
-     * Format name with disambiguation pipe if contains parentheses
-     */
-    formatName(name) {
-        if (name.includes('(')) {
-            const baseName = name.substring(0, name.indexOf('(') - 1);
-            return `${name}|${baseName}`;
-        }
-        return name;
     }
 
     /**
