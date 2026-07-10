@@ -39,6 +39,15 @@ const LEAGUES = {
         totalWeeks: 34,
         season: '2026-27'
     },
+    tff12627: {
+        id: 'tff12627',
+        name: '1. Lig 2026-27',
+        shortName: '1. Lig',
+        dataFile: 'data/1l2627.txt',
+        matchesPerWeek: 10,
+        totalWeeks: 38,
+        season: '2026-27'
+    },
 };
 
 // Export for use in other modules
