@@ -21,6 +21,24 @@ const LEAGUES = {
          totalWeeks: 38,
          season: '2025-26'
      },
+     tff2lig2526beyaz: {
+         id: 'tff2lig2526beyaz',
+         name: 'TFF 2. Lig 2025-26 (Beyaz)',
+         shortName: '2. Lig (Beyaz)',
+         dataFile: 'data/2l2526beyaz.txt',
+         matchesPerWeek: 10,
+         totalWeeks: 38,
+         season: '2025-26'
+     },
+     tff2lig2526kırmızı: {
+         id: 'tff2lig2526kırmızı',
+         name: 'TFF 2. Lig 2025-26 (Kırmızı)',
+         shortName: '2. Lig (Kırmızı)',
+         dataFile: 'data/2l2526kırmızı.txt',
+         matchesPerWeek: 9,
+         totalWeeks: 34,
+         season: '2025-26'
+     },
       tff1lig2526pof: {
          id: 'tff1lig2526',
          name: 'TFF 1. Lig 2025-26 Play-Off',
