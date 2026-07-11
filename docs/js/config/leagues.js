@@ -26,7 +26,7 @@ const LEAGUES = {
          name: 'TFF 2. Lig 2025-26 (Beyaz)',
          shortName: '2. Lig (Beyaz)',
          dataFile: 'data/2l2526beyaz.txt',
-         matchesPerWeek: 10,
+         matchesPerWeek: 9,
          totalWeeks: 38,
          season: '2025-26'
      },

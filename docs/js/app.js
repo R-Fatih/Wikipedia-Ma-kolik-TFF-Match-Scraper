@@ -46,6 +46,8 @@ class App {
             missingSection: document.getElementById('missingSection'),
             missingPlayersList: document.getElementById('missingPlayersList'),
             copyMissingBtn: document.getElementById('copyMissingBtn'),
+            analyzeMissingBtn: document.getElementById('analyzeMissingBtn'),
+            missingAnalysisStatus: document.getElementById('missingAnalysisStatus'),
             failedMatchesSection: document.getElementById('failedMatchesSection'),
             failedMatchesList: document.getElementById('failedMatchesList'),
             retryFailedBtn: document.getElementById('retryFailedBtn'),
@@ -54,6 +56,7 @@ class App {
             matchOutputs: document.getElementById('matchOutputs'),
             copyBtn: document.getElementById('copyBtn'),
             downloadBtn: document.getElementById('downloadBtn'),
+            byeEnabled: document.getElementById('byeEnabled'),
             toast: document.getElementById('toast')
         };
 
@@ -145,6 +148,11 @@ class App {
         // Copy missing IDs button
         this.elements.copyMissingBtn.addEventListener('click', () => this.copyMissingIds());
 
+        // Analyze missing IDs and download Excel button
+        if (this.elements.analyzeMissingBtn) {
+            this.elements.analyzeMissingBtn.addEventListener('click', () => this.analyzeMissingPlayers());
+        }
+
         // Download button
         this.elements.downloadBtn.addEventListener('click', () => this.downloadOutput());
 
@@ -158,6 +166,9 @@ class App {
 
         // Save settings on change
         this.elements.varEnabled.addEventListener('change', () => this.saveSettings());
+        if (this.elements.byeEnabled) {
+            this.elements.byeEnabled.addEventListener('change', () => this.saveSettings());
+        }
     }
 
     /**
@@ -299,6 +310,10 @@ class App {
             this.elements.varEnabled.checked = settings.varEnabled;
         }
 
+        if (settings.byeEnabled !== undefined && this.elements.byeEnabled) {
+            this.elements.byeEnabled.checked = settings.byeEnabled;
+        }
+
         if (settings.leagueId && LEAGUES[settings.leagueId]) {
             this.elements.leagueSelect.value = settings.leagueId;
             this.onLeagueChange(settings.leagueId);
@@ -328,6 +343,7 @@ class App {
     saveSettings() {
         const settings = {
             varEnabled: this.elements.varEnabled.checked,
+            byeEnabled: this.elements.byeEnabled ? this.elements.byeEnabled.checked : false,
             leagueId: this.elements.leagueSelect.value,
             weekType: this.weekSelectionType,
             singleWeek: parseInt(this.elements.singleWeek.value),
@@ -381,8 +397,9 @@ class App {
         // Clear missing IDs from resolver
         this.mackolikScraper.playerNameResolver.clearCache();
 
-        let combinedOutput = '';
-        let currentWeek = -1;
+        const byeEnabled = this.elements.byeEnabled ? this.elements.byeEnabled.checked : false;
+        const isFullSeason = (this.weekSelectionType === 'range' && startWeek === 1 && endWeek === this.selectedLeague.totalWeeks);
+        const weeksData = {};
 
         for (let i = start; i < actualEnd; i++) {
             if (this.shouldStop) {
@@ -401,10 +418,8 @@ class App {
             // Calculate week number
             const weekNumber = Math.floor(i / matchesPerWeek) + 1;
 
-            // Add week header if new week
-            if (weekNumber !== currentWeek) {
-                currentWeek = weekNumber;
-                combinedOutput += `<!-- ${weekNumber}. Hafta -->\n`;
+            if (!weeksData[weekNumber]) {
+                weeksData[weekNumber] = { matches: [], teamsPlayed: new Set() };
             }
 
             this.elements.currentMatch.textContent = `İşleniyor: ${i + 1}/${actualEnd} - TFF=${tffId}`;
@@ -439,6 +454,10 @@ class App {
                     continue;
                 }
 
+                // Record played teams
+                weeksData[weekNumber].teamsPlayed.add(matchObj.homeId);
+                weeksData[weekNumber].teamsPlayed.add(matchObj.awayId);
+
                 // Get Maçkolik events
                 let events = { homeGoals: '', awayGoals: '', homeScore: null, awayScore: null, failed: false };
                 if (mackolikId) {
@@ -467,17 +486,57 @@ class App {
 
                 const output = matchDetails.getOutput(includeVAR);
 
-                this.matchOutputs.push({
+                weeksData[weekNumber].matches.push({
                     tffId,
                     mackolikId,
                     output,
                     mDetail: matchDetails.mDetail
                 });
 
-                combinedOutput += output + '\n\n';
-
             } catch (error) {
                 this.addError(`Genel hata (${tffId}): ${error.message}`);
+            }
+        }
+
+        // Build combined output and individual outputs grouped by week
+        let combinedOutput = '';
+        this.matchOutputs = [];
+
+        // Detect distinct teams across weeks
+        const distinctTeamIds = new Set();
+        Object.values(weeksData).forEach(wData => {
+            wData.teamsPlayed.forEach(tId => distinctTeamIds.add(tId));
+        });
+
+        const sortedWeeks = Object.keys(weeksData).map(Number).sort((a, b) => a - b);
+        for (const w of sortedWeeks) {
+            combinedOutput += `<!-- ${w}. Hafta -->\n`;
+            const wData = weeksData[w];
+            for (const m of wData.matches) {
+                this.matchOutputs.push(m);
+                combinedOutput += m.output + '\n\n';
+            }
+
+            // BAY haftası box after last match of week if enabled & full season run
+            if (byeEnabled && isFullSeason) {
+                let byeTeam = null;
+                for (const tId of distinctTeamIds) {
+                    if (!wData.teamsPlayed.has(tId)) {
+                        byeTeam = Team.findByTFFId(this.teams, tId) || { kısaKodu: 'BAY', TakımAdı: 'BAY' };
+                        break;
+                    }
+                }
+                if (byeTeam) {
+                    const byeCode = byeTeam.kısaKodu || byeTeam.KısaKodu || 'BAY';
+                    const byeOutput = `|${byeCode}-BAY = \n{{Kapanabilir futbol maçı kutusu\n|tarih             = 1\n|zaman             = 1\n|tur               = ${w}\n|takım1            = 1\n|sonuç             = Y\n|takım2            = \n|stadyum           = \n|bg                = \n}}`;
+                    this.matchOutputs.push({
+                        tffId: `BAY_${w}`,
+                        mackolikId: '',
+                        output: byeOutput,
+                        mDetail: `|${byeCode}-BAY`
+                    });
+                    combinedOutput += byeOutput + '\n\n';
+                }
             }
         }
 
@@ -745,6 +804,96 @@ class App {
         } catch (error) {
             this.showToast('Kopyalama başarısız', 'error');
         }
+    }
+
+    /**
+     * Analyze missing players on Wikidata and download as Excel file
+     */
+    async analyzeMissingPlayers() {
+        const missingIds = this.mackolikScraper.playerNameResolver.getMissingIds();
+        if (!missingIds || missingIds.length === 0) {
+            this.showToast('Analiz edilecek bulunamayan oyuncu yok', 'warning');
+            return;
+        }
+
+        const btn = this.elements.analyzeMissingBtn;
+        const statusEl = this.elements.missingAnalysisStatus;
+        if (btn) btn.disabled = true;
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = `Oyuncular analiz ediliyor... (0 / ${missingIds.length})`;
+        }
+
+        const results = [];
+        for (let i = 0; i < missingIds.length; i++) {
+            const id = missingIds[i];
+            if (statusEl) {
+                statusEl.textContent = `Oyuncular analiz ediliyor... (${i + 1} / ${missingIds.length}: ID ${id})`;
+            }
+
+            try {
+                const details = await this.mackolikScraper.getPlayerDetails(id);
+                results.push(details);
+            } catch (error) {
+                console.error(`ID ${id} detayları alınamadı:`, error);
+                results.push({
+                    id: id,
+                    name: '-',
+                    nationality: '-',
+                    birthDate: '-',
+                    url: `https://arsiv.mackolik.com/Futbolcu/${id}/`
+                });
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        if (statusEl) {
+            statusEl.textContent = 'Analiz tamamlandı! Excel dosyası hazırlanıyor...';
+        }
+
+        const filename = `bulunamayan_oyuncular_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        if (typeof XLSX !== 'undefined') {
+            const headers = ["Maçkolik ID", "Adı", "Milliyeti", "Doğum Tarihi", "Maçkolik Linki"];
+            const rows = results.map(r => [
+                r.id,
+                r.name || '-',
+                r.nationality || '-',
+                r.birthDate || '-',
+                r.url
+            ]);
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Bulunamayan Oyuncular");
+            XLSX.writeFile(workbook, filename);
+        } else {
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "Maçkolik ID,Adı,Milliyeti,Doğum Tarihi,Maçkolik Linki\r\n";
+            results.forEach(r => {
+                const row = [
+                    `"${r.id}"`,
+                    `"${(r.name || '-').replace(/"/g, '""')}"`,
+                    `"${(r.nationality || '-').replace(/"/g, '""')}"`,
+                    `"${(r.birthDate || '-').replace(/"/g, '""')}"`,
+                    `"${r.url}"`
+                ];
+                csvContent += row.join(",") + "\r\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename.replace('.xlsx', '.csv'));
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        if (statusEl) {
+            statusEl.textContent = `Tamamlandı! ${results.length} oyuncu Excel olarak indirildi.`;
+        }
+        if (btn) btn.disabled = false;
+        this.showToast(`${results.length} oyuncu analiz edildi ve Excel indirildi`, 'success');
     }
 
     /**

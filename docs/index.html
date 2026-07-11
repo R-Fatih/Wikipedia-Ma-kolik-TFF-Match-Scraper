@@ -102,6 +102,13 @@
                             <span class="toggle-label">Aktif</span>
                         </div>
                     </div>
+                    <div class="setting-item">
+                        <label for="byeEnabled">BAY Haftası</label>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="byeEnabled">
+                            <span class="toggle-label">Aktif</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -178,7 +185,11 @@
                     <button class="btn btn-secondary" id="copyMissingBtn">
                         <span>📋</span> ID'leri Kopyala
                     </button>
+                    <button class="btn btn-primary" id="analyzeMissingBtn">
+                        <span>📊</span> Analiz Et ve Excel İndir
+                    </button>
                 </div>
+                <div id="missingAnalysisStatus" style="margin-top: 12px; font-size: 14px; font-weight: 500; color: #444; display: none;"></div>
             </section>
 
             <!-- Output Section -->
@@ -224,6 +235,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="js/config/leagues.js"></script>
     <script src="js/models/Match.js"></script>
     <script src="js/models/Team.js"></script>

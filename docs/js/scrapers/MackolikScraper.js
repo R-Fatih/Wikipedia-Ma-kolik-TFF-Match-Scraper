@@ -313,6 +313,106 @@ class MackolikScraper {
     }
 
     /**
+     * Get player details (name, nationality, birth date) from Maçkolik player page
+     * @param {number|string} id - Maçkolik player ID
+     */
+    async getPlayerDetails(id) {
+        const url = `https://arsiv.mackolik.com/Futbolcu/${id}/`;
+        let html = null;
+
+        // 1. Try custom proxy
+        if (this.customProxyUrl) {
+            try {
+                const proxyUrl = this.customProxyUrl + "?url=" + encodeURIComponent(url);
+                const response = await this.fetchWithTimeout(proxyUrl, 20000);
+                if (response.ok) {
+                    html = await response.text();
+                }
+            } catch (e) {
+                console.warn('Custom proxy failed for player details:', e.message);
+            }
+        }
+
+        // 2. Try fallback proxies
+        if (!html) {
+            for (let i = 0; i < this.proxyUrls.length; i++) {
+                try {
+                    const proxyUrl = this.proxyUrls[i] + encodeURIComponent(url);
+                    const response = await this.fetchWithTimeout(proxyUrl, 20000);
+                    if (response.ok) {
+                        html = await response.text();
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(`Proxy ${i} failed for player details:`, e.message);
+                }
+            }
+        }
+
+        // 3. Try direct
+        if (!html) {
+            try {
+                const response = await this.fetchWithTimeout(url, 20000);
+                if (response.ok) {
+                    html = await response.text();
+                }
+            } catch (e) {
+                console.warn('Direct URL failed for player details:', e.message);
+            }
+        }
+
+        const result = {
+            id: id,
+            name: '-',
+            nationality: '-',
+            birthDate: '-',
+            url: `https://arsiv.mackolik.com/Futbolcu/${id}/`
+        };
+
+        if (!html) return result;
+
+        try {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            // 1. Name
+            const nameEl = doc.querySelector('h1[itemprop="name"]') || doc.querySelector('#dvPlayerDetails h1');
+            if (nameEl) {
+                result.name = nameEl.textContent.trim();
+            }
+
+            // 2. Nationality
+            const flagImg = doc.querySelector('#dvPlayerDetails img[src*="flags/"]');
+            if (flagImg) {
+                result.nationality = flagImg.getAttribute('alt')?.trim() || '';
+                if (!result.nationality && flagImg.parentElement) {
+                    result.nationality = flagImg.parentElement.textContent.trim();
+                }
+            }
+
+            // 3. Birth Date
+            const timeEl = doc.querySelector('time[itemprop="birthDate"]');
+            if (timeEl) {
+                result.birthDate = timeEl.textContent.trim();
+            } else {
+                const infoDivs = doc.querySelectorAll('#dvPlayerInfo div');
+                for (let i = 0; i < infoDivs.length; i++) {
+                    if (infoDivs[i].textContent.includes('D.Tarihi')) {
+                        const nextDiv = infoDivs[i + 1];
+                        if (nextDiv) {
+                            result.birthDate = nextDiv.textContent.replace(':', '').trim().split(' ')[0];
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing player details HTML:', e);
+        }
+
+        return result;
+    }
+
+    /**
      * Fetch with timeout
      */
     async fetchWithTimeout(url, timeout) {
