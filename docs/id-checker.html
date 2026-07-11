@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikidata ID Kontrol & Düzenleyici - Wikipedia Match Scraper</title>
+    <meta name="description"
+        content="Wikipedia futbol maç şablonlarındaki Maçkolik oyuncu ID'lerini Wikidata üzerinde kontrol eder, isimleri otomatik düzenler ve eksikleri Excel raporu olarak verir.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🔍</span>
+                    <h1>Wikidata ID Kontrol & Düzenleyici</h1>
+                </div>
+                <p class="subtitle">Metindeki Sayısal Oyuncu ID'lerini Sorgula, Düzenle & Eksikleri Raporla</p>
+                <nav class="top-nav">
+                    <a href="index.html" class="nav-link">⚽ Maç Scraper</a>
+                    <a href="id-checker.html" class="nav-link active">🔍 Wikidata ID Kontrol & Düzenleyici</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Card -->
+            <section class="card input-card">
+                <h2 class="card-title">
+                    <span class="icon">📝</span>
+                    1. Wikipedia Metnini Yapıştırın
+                </h2>
+                <p class="card-description">
+                    İçerisinde sayısal oyuncu ID'leri (ör. <code>[[684964]]</code> veya <code>[[823741]]</code>) bulunan Wikipedia şablon metnini aşağıya yapıştırın.
+                </p>
+                <textarea id="inputText" class="output-textarea" style="min-height: 220px;" placeholder="|AGÜ-24E = &#10;{{Kapanabilir futbol maçı kutusu&#10;...&#10;* [[Enes Tepecik]] {{gol|38}}&#10;* [[684964]] {{sarı kart|68}}&#10;..."></textarea>
+                <div class="action-container" style="justify-content: flex-start; margin-top: 16px;">
+                    <button class="btn btn-primary btn-large" id="checkIdsBtn">
+                        <span class="btn-icon">🚀</span>
+                        <span class="btn-text">ID'leri Kontrol Et ve Düzenle</span>
+                    </button>
+                    <button class="btn btn-secondary" id="clearBtn">
+                        <span class="btn-icon">🗑️</span>
+                        <span class="btn-text">Temizle</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Status & Stats Card -->
+            <section class="card status-card" id="statusSection" style="display: none;">
+                <h2 class="card-title">
+                    <span class="icon">📊</span>
+                    2. Kontrol ve Çözümleme Durumu
+                </h2>
+                
+                <!-- Progress -->
+                <div class="progress-container" id="checkerProgressSection" style="margin-bottom: 20px;">
+                    <div class="progress-header">
+                        <span id="checkerStatusText">Wikidata sorguları başlatılıyor...</span>
+                        <span id="checkerProgressText">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="checkerProgressFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-number" id="statTotal">0</div>
+                        <div class="stat-label">Tespit Edilen ID Sayısı</div>
+                    </div>
+                    <div class="stat-box" style="border-color: rgba(16, 185, 129, 0.3);">
+                        <div class="stat-number" id="statResolved" style="color: #34d399;">0</div>
+                        <div class="stat-label">Wikidata'da Çözülen</div>
+                    </div>
+                    <div class="stat-box" style="border-color: rgba(245, 158, 11, 0.3);">
+                        <div class="stat-number" id="statMissing" style="color: #fbbf24;">0</div>
+                        <div class="stat-label">Hala Eksik Olan</div>
+                    </div>
+                </div>
+
+                <!-- Resolved Chips -->
+                <div id="resolvedSection" style="margin-top: 20px; display: none;">
+                    <h3 style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 8px;">Çözülen & Değiştirilen Oyuncular:</h3>
+                    <div class="chips-container" id="resolvedChips"></div>
+                </div>
+            </section>
+
+            <!-- Updated Output Card -->
+            <section class="card output-card" id="outputSection" style="display: none;">
+                <div class="output-header">
+                    <h2 class="card-title" style="margin-bottom: 0;">
+                        <span class="icon">✨</span>
+                        3. Düzenlenmiş Wikipedia Metni
+                    </h2>
+                    <button class="btn btn-primary" id="copyOutputBtn">
+                        <span>📋</span> Düzenlenmiş Metni Kopyala
+                    </button>
+                </div>
+                <textarea id="outputText" class="output-textarea" style="min-height: 280px; margin-top: 16px;" readonly></textarea>
+            </section>
+
+            <!-- Missing Players Card -->
+            <section class="card missing-card" id="missingSection" style="display: none;">
+                <div class="output-header">
+                    <h2 class="card-title" style="margin-bottom: 0;">
+                        <span class="icon">⚠️</span>
+                        4. Wikidata'da Hala Bulunamayan Oyuncular
+                    </h2>
+                    <button class="btn btn-primary" id="downloadExcelBtn">
+                        <span>📊</span> Excel Raporu İndir (.xlsx)
+                    </button>
+                </div>
+                <p class="card-description" style="margin-top: 8px;">
+                    Aşağıdaki oyuncular Wikidata üzerinde bulunamamıştır. Maçkolik arşiv sayfalarından Adı, Milliyeti ve Doğum Tarihi bilgileri otomatik çekilmiştir.
+                </p>
+                <div id="missingScrapeStatus" style="font-size: 0.9rem; color: var(--text-secondary); margin: 8px 0;"></div>
+                <div class="custom-table-wrapper">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Maçkolik ID</th>
+                                <th>Adı</th>
+                                <th>Milliyeti</th>
+                                <th>Doğum Tarihi</th>
+                                <th>Maçkolik Linki</th>
+                            </tr>
+                        </thead>
+                        <tbody id="missingTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Wikipedia Match Scraper & ID Checker — Wikidata & Maçkolik Entegrasyonu</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span class="toast-icon"></span>
+        <span class="toast-message"></span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="js/wikidata/PlayerName.js"></script>
+    <script src="js/scrapers/MackolikScraper.js"></script>
+    <script src="js/id-checker.js"></script>
+</body>
+
+</html>
