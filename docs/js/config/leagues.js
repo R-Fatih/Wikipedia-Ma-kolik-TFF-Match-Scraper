@@ -66,6 +66,24 @@ const LEAGUES = {
         totalWeeks: 38,
         season: '2026-27'
     },
+    tff22627kırmızı: {
+        id: 'tff22627kırmızı',
+        name: '2. Lig 2026-27  (Kırmızı)',
+        shortName: '2. Lig  (Kırmızı)',
+        dataFile: 'data/2l2627kırmızı.txt',
+        matchesPerWeek: 8,
+        totalWeeks: 34,
+        season: '2026-27'
+    },
+    tff22627beyaz: {
+        id: 'tff22627beyaz',
+        name: '2. Lig 2026-27  (Beyaz)',
+        shortName: '2. Lig  (Beyaz)',
+        dataFile: 'data/2l2627beyaz.txt',
+        matchesPerWeek: 9,
+        totalWeeks: 34,
+        season: '2026-27'
+    },
 };
 
 // Export for use in other modules
