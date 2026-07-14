@@ -84,6 +84,34 @@ const LEAGUES = {
         totalWeeks: 34,
         season: '2026-27'
     },
+    tff32627_1: {
+        id: 'tff32627_1',
+        name: '3. Lig 2026-27 1. Grup',
+        shortName: '3. Lig  1. Grup',
+        dataFile: 'data/3l26271.grup.txt',
+        matchesPerWeek: 9,
+        totalWeeks: 34,
+        season: '2026-27'
+    },
+    tff32627_2: {
+        id: 'tff32627_2',
+        name: '3. Lig 2026-27 2. Grup',
+        shortName: '3. Lig  2. Grup',
+        dataFile: 'data/3l26272.grup.txt',
+        matchesPerWeek: 9,
+        totalWeeks: 34,
+        season: '2026-27'
+    },
+    tff32627_3: {
+        id: 'tff32627_3',
+        name: '3. Lig 2026-27 3. Grup',
+        shortName: '3. Lig  3. Grup',
+        dataFile: 'data/3l26273.grup.txt',
+        matchesPerWeek: 9,
+        totalWeeks: 34,
+        season: '2026-27'
+    },
+
 };
 
 // Export for use in other modules
