@@ -133,6 +133,7 @@ class TFFScraper {
         if (dateEl) {
             const dateStr = dateEl.textContent.trim().replace(' - ', ' ');
             match.date = this.parseDate(dateStr);
+            match.hasKnownTime = /\b\d{1,2}:\d{2}\b/.test(dateStr);
         }
 
         // Extract teams

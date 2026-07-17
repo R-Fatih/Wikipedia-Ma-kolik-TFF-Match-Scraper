@@ -19,6 +19,7 @@ class Match {
         this.awayMS = 0;
         this.isScoreSet = false;
         this.date = new Date();
+        this.hasKnownTime = false;
         this.isDefaultWin = false;
     }
 

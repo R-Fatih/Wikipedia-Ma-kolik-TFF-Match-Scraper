@@ -490,7 +490,9 @@ class App {
                     tffId,
                     mackolikId,
                     output,
-                    mDetail: matchDetails.mDetail
+                    mDetail: matchDetails.mDetail,
+                    date: matchObj.date,
+                    hasKnownTime: matchObj.hasKnownTime
                 });
 
             } catch (error) {
@@ -512,6 +514,26 @@ class App {
         for (const w of sortedWeeks) {
             combinedOutput += `<!-- ${w}. Hafta -->\n`;
             const wData = weeksData[w];
+            wData.matches.sort((firstMatch, secondMatch) => {
+                const firstDate = new Date(firstMatch.date);
+                const secondDate = new Date(secondMatch.date);
+
+                // Compare calendar days before kick-off times so each week's
+                // output remains chronological even when source IDs are not.
+                const dayDifference = new Date(
+                    firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate()
+                ) - new Date(
+                    secondDate.getFullYear(), secondDate.getMonth(), secondDate.getDate()
+                );
+                if (dayDifference !== 0) return dayDifference;
+
+                // Unknown kick-off times are kept in their original relative order.
+                if (!firstMatch.hasKnownTime || !secondMatch.hasKnownTime) {
+                    return Number(secondMatch.hasKnownTime) - Number(firstMatch.hasKnownTime);
+                }
+
+                return firstDate - secondDate;
+            });
             for (const m of wData.matches) {
                 this.matchOutputs.push(m);
                 combinedOutput += m.output + '\n\n';
