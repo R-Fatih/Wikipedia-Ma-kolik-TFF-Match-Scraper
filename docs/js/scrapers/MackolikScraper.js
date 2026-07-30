@@ -104,6 +104,87 @@ class MackolikScraper {
     }
 
     /**
+     * Get full match data from Maçkolik API without TFF data
+     * @param {string} matchId - Maçkolik match ID
+     * @returns {Promise<Object>} Match data object with teams, score, and formatted goals
+     */
+    async getMatchData(matchId) {
+        if (!matchId) {
+            throw new Error('Maçkolik ID belirtilmedi');
+        }
+
+        const mackolikUrl = `https://arsiv.mackolik.com/Match/MatchData.aspx?t=dtl&id=${matchId}&s=0`;
+        let json = null;
+
+        // 1. Try custom Cloudflare Worker proxy first
+        if (this.customProxyUrl) {
+            try {
+                const proxyUrl = this.customProxyUrl + "?url=" + encodeURIComponent(mackolikUrl);
+                const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
+                if (response.ok) {
+                    const text = await response.text();
+                    json = JSON.parse(this.sanitizeJson(text));
+                }
+            } catch (error) {
+                console.warn('Maçkolik custom proxy failed:', error.message);
+            }
+        }
+
+        // 2. Fallback to public proxies if custom didn't work
+        if (!json) {
+            let attempts = 0;
+            const maxAttempts = this.proxyUrls.length * 2;
+            while (!json && attempts < maxAttempts) {
+                try {
+                    const proxyUrl = this.getProxyUrl() + encodeURIComponent(mackolikUrl);
+                    const response = await this.fetchWithTimeout(proxyUrl, this.timeout);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const text = await response.text();
+                    json = JSON.parse(this.sanitizeJson(text));
+                } catch (error) {
+                    console.warn(`Maçkolik proxy ${this.currentProxyIndex} failed:`, error.message);
+                    this.switchProxy();
+                    attempts++;
+                }
+            }
+        }
+
+        // 3. Fallback to direct URL
+        if (!json) {
+            try {
+                const response = await this.fetchWithTimeout(mackolikUrl, this.timeout);
+                if (response.ok) {
+                    const text = await response.text();
+                    json = JSON.parse(this.sanitizeJson(text));
+                }
+            } catch (error) {
+                console.warn('Maçkolik direct URL failed:', error.message);
+            }
+        }
+
+        if (!json) {
+            throw new Error(`Maçkolik API bağlantısı başarısız oldu (ID: ${matchId})`);
+        }
+
+        const eventsData = await this.processEvents(json);
+
+        return {
+            matchId: String(matchId),
+            homeTeam: json.home || 'Ev Sahibi',
+            awayTeam: json.away || 'Deplasman',
+            homeScore: eventsData.homeScore,
+            awayScore: eventsData.awayScore,
+            halfTimeScore: json.d?.ht || '',
+            homeGoals: eventsData.homeGoals,
+            awayGoals: eventsData.awayGoals,
+            homeLineup: json.h || [],
+            awayLineup: json.a || [],
+            events: json.e || [],
+            rawJson: json
+        };
+    }
+
+    /**
      * Sanitize JSON string by fixing invalid escape sequences
      * Maçkolik sometimes returns backslash-escaped single quotes which is invalid JSON
      */

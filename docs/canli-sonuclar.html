@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maçkolik Canlı Sonuçlar & Maç Scraper</title>
+    <meta name="description" content="Maçkolik Canlı Sonuçlar web view üzerinden seçilen maçın datasını TFF olmadan scrape edin">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">⚡</span>
+                    <h1>Maçkolik Canlı Sonuçlar</h1>
+                </div>
+                <p class="subtitle">Web View üzerinden Maç Seç & TFF Olmadan Scrape Et</p>
+                <nav class="top-nav">
+                    <a href="index.html" class="nav-link">⚽ Maç Scraper</a>
+                    <a href="canli-sonuclar.html" class="nav-link active">⚡ Canlı Sonuçlar</a>
+                    <a href="id-checker.html" class="nav-link">🔍 Wikidata ID Kontrol & Düzenleyici</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Quick Manual Scrape Card -->
+            <section class="card settings-card">
+                <h2 class="card-title">
+                    <span class="icon">🔍</span>
+                    Maçkolik ID veya Link Yapıştırarak Scrape Et
+                </h2>
+                <div class="input-group-row" style="display: flex; gap: 12px; align-items: center; margin-top: 10px;">
+                    <input type="text" id="manualMatchId" class="text-input" placeholder="Maçkolik Maç ID veya Linki (Örn: 4479885 veya https://arsiv.mackolik.com/Mac/4479885/Tobol-FK-Panevezys)" style="flex: 1; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary); font-size: 14px;">
+                    <button class="btn btn-primary" id="manualScrapeBtn" style="padding: 12px 24px; white-space: nowrap;">
+                        <span>🚀</span> Scrape Et
+                    </button>
+                </div>
+                <div style="margin-top: 12px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span>Hızlı Test:</span>
+                    <button type="button" class="btn btn-secondary sample-match-chip" data-id="4308325" style="padding: 3px 10px; font-size: 12px;">Gaziantep FK - Galatasaray (4308325)</button>
+                    <button type="button" class="btn btn-secondary sample-match-chip" data-id="4479885" style="padding: 3px 10px; font-size: 12px;">Tobol FK - Panevezys (4479885)</button>
+                </div>
+            </section>
+
+            <!-- Web View Section -->
+            <section class="card webview-card" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="card-title" style="margin: 0;">
+                        <span class="icon">📺</span>
+                        Maçkolik Canlı Sonuçlar Web View
+                    </h2>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span id="webviewStatus" class="status-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">⚡ Canlı Bağlantı</span>
+                        <a href="https://arsiv.mackolik.com/Canli-Sonuclar" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px; text-decoration: none;">
+                            <span>🔗</span> Yeni Sekmede Aç
+                        </a>
+                        <button class="btn btn-secondary" id="reloadWebviewBtn" style="padding: 6px 12px; font-size: 13px;">
+                            <span>🔄</span> Yenile
+                        </button>
+                    </div>
+                </div>
+                <p class="card-description" style="margin-bottom: 15px; font-size: 14px; color: var(--text-secondary);">
+                    Aşağıdaki Maçkolik Canlı Sonuçlar görünümünde <strong>herhangi bir maçın skoruna (örneğin: 1 - 1) veya linkine tıklandığında</strong> maç yeni sekmede açılmaz; otomatik olarak ID'si çekilip TFF olmadan Wikipedia datası üretilir.
+                </p>
+
+                <!-- Web View Iframe Container -->
+                <div class="webview-container" style="position: relative; width: 100%; height: 700px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: #ffffff;">
+                    <iframe id="mackolikFrame" style="width: 100%; height: 100%; border: none;" title="Maçkolik Canlı Sonuçlar"></iframe>
+                </div>
+            </section>
+
+            <!-- Progress / Loading Section -->
+            <section class="card progress-card" id="progressSection" style="display: none; margin-top: 20px;">
+                <h2 class="card-title">
+                    <span class="icon">📊</span>
+                    Maç Datası Alınıyor...
+                </h2>
+                <div class="progress-wrapper">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 100%;"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progressText">Lütfen Bekleyin</span>
+                        <span id="progressDetails">Maçkolik verileri ve oyuncu isimleri çekiliyor...</span>
+                    </div>
+                </div>
+                <div class="current-match" id="currentMatch" style="margin-top: 10px; font-weight: 600;"></div>
+            </section>
+
+            <!-- Error Log -->
+            <section class="card error-card" id="errorSection" style="display: none; margin-top: 20px;">
+                <h2 class="card-title">
+                    <span class="icon">⚠️</span>
+                    Uyarılar ve Hatalar
+                </h2>
+                <div class="error-list" id="errorList"></div>
+            </section>
+
+            <!-- Output Section -->
+            <section class="card output-card" id="outputSection" style="display: none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="card-title" style="margin: 0;">
+                        <span class="icon">📋</span>
+                        Wikipedia Maç Kodu (TFF'siz Scrape)
+                    </h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" id="copyBtn">
+                            <span>📋</span> Kopyala
+                        </button>
+                        <button class="btn btn-secondary" id="downloadBtn">
+                            <span>💾</span> İndir (.txt)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Match Banner -->
+                <div id="matchSummaryBanner" style="background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary-light); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 16px; font-weight: 600;">
+                </div>
+
+                <div class="output-wrapper">
+                    <textarea id="combinedOutput" readonly class="output-textarea" style="width: 100%; min-height: 280px; font-family: monospace; font-size: 13px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 15px; resize: vertical;"></textarea>
+                </div>
+            </section>
+
+            <!-- Missing Wikidata IDs Section -->
+            <section class="card missing-card" id="missingSection" style="display: none; margin-top: 20px;">
+                <h2 class="card-title">
+                    <span class="icon">🔍</span>
+                    Wikidata'da Bulunamayan Oyuncular
+                </h2>
+                <p class="card-description">Bu ID'ler henüz Wikidata veritabanında yok. Maçkolik linki ile kontrol edilebilir.</p>
+                <div class="missing-ids-container">
+                    <div class="missing-group">
+                        <h3>Oyuncular</h3>
+                        <div class="missing-list" id="missingPlayersList"></div>
+                    </div>
+                </div>
+                <div class="output-actions" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" id="copyMissingBtn">
+                        <span>📋</span> ID'leri Kopyala
+                    </button>
+                    <button class="btn btn-primary" id="analyzeMissingBtn">
+                        <span>📊</span> Analiz Et ve Excel İndir
+                    </button>
+                </div>
+                <div id="missingAnalysisStatus" style="margin-top: 12px; font-size: 14px; font-weight: 500; color: var(--text-secondary); display: none;"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Models & Services -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="js/config/leagues.js"></script>
+    <script src="js/models/Team.js"></script>
+    <script src="js/models/Match.js"></script>
+    <script src="js/models/MatchDetails.js"></script>
+    <script src="js/wikidata/PlayerName.js"></script>
+    <script src="js/wikidata/StadiumName.js"></script>
+    <script src="js/wikidata/StadiumPlace.js"></script>
+    <script src="js/scrapers/MackolikScraper.js"></script>
+    <script src="js/formatter/WikiFormatter.js"></script>
+    <script src="js/canli.js"></script>
+</body>
+
+</html>

@@ -107,6 +107,63 @@ class WikiFormatter {
     }
 
     /**
+     * Format a match scraped only from Maçkolik (without TFF data)
+     * @param {Object} matchData - Scraped match data from MackolikScraper.getMatchData
+     * @param {Team[]} teams - Optional loaded teams list for code/name mapping
+     * @returns {Promise<MatchDetails>}
+     */
+    async formatMackolikMatch(matchData, teams = []) {
+        const details = new MatchDetails();
+
+        // Try to find teams from loaded teams array
+        const homeTeamObj = teams.find(t =>
+            (t.maçkolikId && String(t.maçkolikId) === String(matchData.homeMackolikId)) ||
+            (t.takımAdı && t.takımAdı.toLowerCase() === (matchData.homeTeam || '').toLowerCase())
+        );
+        const awayTeamObj = teams.find(t =>
+            (t.maçkolikId && String(t.maçkolikId) === String(matchData.awayMackolikId)) ||
+            (t.takımAdı && t.takımAdı.toLowerCase() === (matchData.awayTeam || '').toLowerCase())
+        );
+
+        const homeCode = homeTeamObj?.kısaKodu || (matchData.homeTeam ? matchData.homeTeam.substring(0, 3).toUpperCase() : '???');
+        const awayCode = awayTeamObj?.kısaKodu || (matchData.awayTeam ? matchData.awayTeam.substring(0, 3).toUpperCase() : '???');
+
+        details.mDetail = `|${homeCode}-${awayCode}`;
+        details.tur = matchData.weekNumber ? matchData.weekNumber.toString() : '';
+
+        const today = new Date();
+        const year = matchData.date ? matchData.date.getFullYear() : today.getFullYear();
+        const month = matchData.date ? matchData.date.getMonth() + 1 : today.getMonth() + 1;
+        const day = matchData.date ? matchData.date.getDate() : today.getDate();
+        details.tarih = `{{Başlangıç tarihi|${year}|${month}|${day}}}`;
+        details.zaman = matchData.time || '';
+
+        const homeName = homeTeamObj?.takımAdı || matchData.homeTeam || 'Ev Sahibi';
+        const awayName = awayTeamObj?.takımAdı || matchData.awayTeam || 'Deplasman';
+        details.takim1 = `[[${homeName}]]`;
+        details.takim2 = `[[${awayName}]]`;
+
+        if (matchData.homeScore !== null && matchData.awayScore !== null) {
+            details.sonuc = `${matchData.homeScore} - ${matchData.awayScore}`;
+        } else {
+            details.sonuc = '';
+        }
+
+        details.rapor = `[https://arsiv.mackolik.com/Mac/${matchData.matchId}/ Rapor]`;
+        details.stadyum = matchData.stadium ? `[[${matchData.stadium}]]` : '';
+        details.yer = matchData.location || '';
+        details.hakem = matchData.referee || '';
+        details.yardimciHakemler = '';
+        details.dorduncuHakem = '';
+        details.besinciHakem = '';
+
+        details.goller1 = matchData.homeGoals || '';
+        details.goller2 = matchData.awayGoals || '';
+
+        return details;
+    }
+
+    /**
      * Generate week header comment
      */
     getWeekHeader(weekNumber) {
