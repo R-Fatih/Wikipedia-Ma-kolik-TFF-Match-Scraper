@@ -141,12 +141,14 @@ class TFFScraper {
         if (homeTeamEl) {
             const href = homeTeamEl.getAttribute('href') || '';
             match.homeId = this.extractId(href, 'kulupId=');
+            match.homeName = this.toTitleCaseTurkish(homeTeamEl.textContent.trim());
         }
 
         const awayTeamEl = doc.querySelector(selectors.awayTeam);
         if (awayTeamEl) {
             const href = awayTeamEl.getAttribute('href') || '';
             match.awayId = this.extractId(href, 'kulupId=');
+            match.awayName = this.toTitleCaseTurkish(awayTeamEl.textContent.trim());
         }
 
         // Extract scores

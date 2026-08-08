@@ -19,6 +19,8 @@ class App {
         this.errors = [];
         this.failedMatches = []; // Matches that failed to connect
         this.weekSelectionType = 'single'; // 'single' or 'range'
+        this.tffCache = {}; // Cache for TFF match info { homeName, awayName, homeId, awayId, matchObj }
+        this.currentFetchSessionId = 0; // Tracks active week fetch session
 
         // DOM Elements
         this.elements = {
@@ -33,6 +35,11 @@ class App {
             startWeek: document.getElementById('startWeek'),
             endWeek: document.getElementById('endWeek'),
             weekSummaryText: document.getElementById('weekSummaryText'),
+            matchesSection: document.getElementById('matchesSection'),
+            matchesCountBadge: document.getElementById('matchesCountBadge'),
+            matchesFetchProgress: document.getElementById('matchesFetchProgress'),
+            fetchProgressText: document.getElementById('fetchProgressText'),
+            matchList: document.getElementById('matchList'),
             varEnabled: document.getElementById('varEnabled'),
             startBtn: document.getElementById('startBtn'),
             stopBtn: document.getElementById('stopBtn'),
@@ -179,6 +186,7 @@ class App {
             this.selectedLeague = null;
             this.elements.leagueInfo.innerHTML = '';
             this.elements.startBtn.disabled = true;
+            if (this.elements.matchesSection) this.elements.matchesSection.style.display = 'none';
             return;
         }
 
@@ -261,6 +269,7 @@ class App {
     updateWeekSummary() {
         if (!this.selectedLeague) {
             this.elements.weekSummaryText.textContent = '-';
+            if (this.elements.matchesSection) this.elements.matchesSection.style.display = 'none';
             return;
         }
 
@@ -276,6 +285,8 @@ class App {
             const totalMatches = weeks * matchesPerWeek;
             this.elements.weekSummaryText.textContent = `${startWeek}. - ${endWeek}. Hafta (${weeks} hafta, ${totalMatches} maç)`;
         }
+
+        this.updateMatchList();
     }
 
     /**
@@ -297,6 +308,255 @@ class App {
             const start = (startWeek - 1) * matchesPerWeek;
             const end = endWeek * matchesPerWeek;
             return { start, end, startWeek, endWeek };
+        }
+    }
+
+    /**
+     * Update match list for currently selected week or range
+     */
+    updateMatchList() {
+        if (!this.selectedLeague || !this.matchData || this.matchData.length === 0) {
+            if (this.elements.matchesSection) {
+                this.elements.matchesSection.style.display = 'none';
+            }
+            return;
+        }
+
+        const { start, end } = this.getMatchIndices();
+        const actualEnd = Math.min(end, this.matchData.length);
+
+        if (start >= actualEnd || start >= this.matchData.length) {
+            if (this.elements.matchesSection) {
+                this.elements.matchesSection.style.display = 'none';
+            }
+            return;
+        }
+
+        const selectedMatches = this.matchData.slice(start, actualEnd);
+
+        if (this.elements.matchesSection) {
+            this.elements.matchesSection.style.display = 'block';
+        }
+        if (this.elements.matchesCountBadge) {
+            this.elements.matchesCountBadge.textContent = `${selectedMatches.length} Maç`;
+        }
+
+        // Increment session ID to invalidate any ongoing background fetch for previous week
+        this.currentFetchSessionId++;
+        const currentSession = this.currentFetchSessionId;
+
+        // Render placeholder cards in match list
+        const listEl = this.elements.matchList;
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        const uncachedMatches = [];
+
+        selectedMatches.forEach((match, index) => {
+            const actualIndex = start + index;
+            const matchIndexInWeek = (actualIndex % this.selectedLeague.matchesPerWeek) + 1;
+
+            const item = document.createElement('div');
+            item.className = 'match-list-item';
+            item.id = `match-item-${actualIndex}`;
+
+            const cached = this.tffCache[match.tffId];
+            let teamsHtml = '';
+
+            if (cached) {
+                teamsHtml = `<span class="team-home">${cached.homeName}</span><span class="team-vs">vs</span><span class="team-away">${cached.awayName}</span>`;
+            } else {
+                teamsHtml = `<span class="team-loading"><span class="spinner-inline"></span> Takım bilgisi alınıyor...</span>`;
+                uncachedMatches.push({ match, actualIndex });
+            }
+
+            item.innerHTML = `
+                <div class="match-item-main">
+                    <span class="match-item-index">#${matchIndexInWeek}</span>
+                    <div class="match-item-ids">
+                        <span class="id-tag">TFF: ${match.tffId}</span>
+                        ${match.mackolikId ? `<span class="id-tag">MK: ${match.mackolikId}</span>` : ''}
+                    </div>
+                    <div class="match-item-teams" id="match-teams-${actualIndex}">
+                        ${teamsHtml}
+                    </div>
+                </div>
+                <div class="match-item-actions" id="match-actions-${actualIndex}">
+                    <button class="btn btn-sm btn-primary btn-scrape-single" id="btn-scrape-${actualIndex}" onclick="app.scrapeSingleMatch(${actualIndex}, '${match.tffId}', '${match.mackolikId}')">
+                        <span>⚡</span> Scrape Et
+                    </button>
+                </div>
+            `;
+            listEl.appendChild(item);
+        });
+
+        // If there are uncached matches, start fetching sequentially
+        if (uncachedMatches.length > 0) {
+            this.fetchWeekMatchesInfo(uncachedMatches, currentSession);
+        } else {
+            if (this.elements.matchesFetchProgress) {
+                this.elements.matchesFetchProgress.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Fetch match team info sequentially for uncached matches
+     */
+    async fetchWeekMatchesInfo(uncachedMatches, sessionId) {
+        if (this.elements.matchesFetchProgress) {
+            this.elements.matchesFetchProgress.style.display = 'flex';
+        }
+
+        const total = uncachedMatches.length;
+
+        for (let i = 0; i < total; i++) {
+            // Check if user changed week or league during fetch
+            if (this.currentFetchSessionId !== sessionId) {
+                return;
+            }
+
+            const { match, actualIndex } = uncachedMatches[i];
+
+            if (this.elements.fetchProgressText) {
+                this.elements.fetchProgressText.textContent = `Takım bilgileri TFF'den çekiliyor (${i + 1}/${total})...`;
+            }
+
+            try {
+                const matchObj = await this.tffScraper.scrape(match.tffId);
+
+                const homeTeam = Team.findByTFFId(this.teams, matchObj.homeId);
+                const awayTeam = Team.findByTFFId(this.teams, matchObj.awayId);
+                const homeName = homeTeam?.takımAdı || matchObj.homeName || matchObj.homeId || 'Ev Sahibi';
+                const awayName = awayTeam?.takımAdı || matchObj.awayName || matchObj.awayId || 'Deplasman';
+
+                // Cache the fetched result
+                this.tffCache[match.tffId] = {
+                    homeName,
+                    awayName,
+                    homeId: matchObj.homeId,
+                    awayId: matchObj.awayId,
+                    matchObj
+                };
+
+                // Update DOM if session still active
+                if (this.currentFetchSessionId === sessionId) {
+                    const teamsEl = document.getElementById(`match-teams-${actualIndex}`);
+                    if (teamsEl) {
+                        teamsEl.innerHTML = `<span class="team-home">${homeName}</span><span class="team-vs">vs</span><span class="team-away">${awayName}</span>`;
+                    }
+                }
+            } catch (error) {
+                console.warn(`TFF info fetch failed for ${match.tffId}:`, error.message);
+                if (this.currentFetchSessionId === sessionId) {
+                    const teamsEl = document.getElementById(`match-teams-${actualIndex}`);
+                    if (teamsEl) {
+                        teamsEl.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem;">TFF bilgisi alınamadı (ID: ${match.tffId})</span>`;
+                    }
+                }
+            }
+        }
+
+        if (this.currentFetchSessionId === sessionId && this.elements.matchesFetchProgress) {
+            this.elements.matchesFetchProgress.style.display = 'none';
+        }
+    }
+
+    /**
+     * Scrape a single match
+     */
+    async scrapeSingleMatch(actualIndex, tffId, mackolikId) {
+        const btn = document.getElementById(`btn-scrape-${actualIndex}`);
+        const itemEl = document.getElementById(`match-item-${actualIndex}`);
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span> Scrape Ediliyor...';
+        }
+
+        this.showToast(`Maç scrape ediliyor (TFF: ${tffId})...`, 'info');
+
+        try {
+            // Check cache or scrape TFF
+            let matchObj;
+            if (this.tffCache[tffId] && this.tffCache[tffId].matchObj) {
+                matchObj = this.tffCache[tffId].matchObj;
+            } else {
+                matchObj = await this.tffScraper.scrape(tffId);
+            }
+
+            // Scrape Maçkolik events if available
+            let events = { homeGoals: '', awayGoals: '', homeScore: null, awayScore: null };
+            if (mackolikId) {
+                try {
+                    events = await this.mackolikScraper.getMatchEvents(mackolikId);
+                } catch (error) {
+                    console.warn(`Maçkolik hatası (${mackolikId}): ${error.message}`);
+                }
+            }
+
+            // Use Maçkolik score if present
+            if (events.homeScore !== null && events.awayScore !== null) {
+                matchObj.homeMS = events.homeScore;
+                matchObj.awayMS = events.awayScore;
+            }
+
+            const weekNumber = Math.floor(actualIndex / this.selectedLeague.matchesPerWeek) + 1;
+            const includeVAR = this.elements.varEnabled.checked;
+
+            const matchDetails = await this.wikiFormatter.formatMatch(
+                matchObj,
+                this.teams,
+                events,
+                weekNumber,
+                includeVAR
+            );
+
+            const output = matchDetails.getOutput(includeVAR);
+
+            // Update output section
+            const singleMatchOutput = {
+                tffId,
+                mackolikId,
+                output,
+                mDetail: matchDetails.mDetail,
+                date: matchObj.date,
+                hasKnownTime: matchObj.hasKnownTime
+            };
+
+            this.matchOutputs = [singleMatchOutput];
+            this.elements.combinedOutput.value = `<!-- ${weekNumber}. Hafta -->\n` + output;
+            this.renderIndividualOutputs();
+            this.elements.outputSection.style.display = 'block';
+
+            // Show missing IDs if any
+            this.renderMissingIds();
+
+            // Update match list item UI
+            if (itemEl) itemEl.classList.add('scraped');
+
+            const actionsEl = document.getElementById(`match-actions-${actualIndex}`);
+            if (actionsEl) {
+                actionsEl.innerHTML = `
+                    <button class="btn btn-sm btn-success" onclick="app.scrapeSingleMatch(${actualIndex}, '${tffId}', '${mackolikId}')">
+                        <span>✅</span> Tekrar Scrape
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="app.copyIndividual('${tffId}')">
+                        <span>📋</span> Kopyala
+                    </button>
+                `;
+            }
+
+            this.showToast('Maç başarıyla scrape edildi!', 'success');
+            this.elements.outputSection.scrollIntoView({ behavior: 'smooth' });
+
+        } catch (error) {
+            console.error('Tek maç scrape hatası:', error);
+            this.showToast(`Scrape hatası: ${error.message}`, 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>⚡</span> Scrape Et';
+            }
         }
     }
 

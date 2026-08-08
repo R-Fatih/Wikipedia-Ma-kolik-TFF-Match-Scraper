@@ -6,6 +6,8 @@ class Match {
         this.tffId = 0;
         this.homeId = '';
         this.awayId = '';
+        this.homeName = '';
+        this.awayName = '';
         this.stadiumId = '';
         this.stadiumName = '';
         this.referee = '';
