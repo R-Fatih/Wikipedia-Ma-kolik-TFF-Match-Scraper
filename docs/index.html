@@ -104,6 +104,15 @@
                         <span class="matches-badge" id="matchesCountBadge">0 Maç</span>
                     </div>
                 </div>
+                <div class="matches-toolbar">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAllMatches" class="match-checkbox">
+                        <span>Tümünü Seç</span>
+                    </label>
+                    <button class="btn btn-primary btn-sm" id="scrapeSelectedBtn" disabled>
+                        <span>⚡</span> Seçilen Maçları Scrape Et (<span id="selectedCountText">0</span>)
+                    </button>
+                </div>
                 <div class="matches-fetch-progress" id="matchesFetchProgress" style="display: none;">
                     <div class="spinner-sm"></div>
                     <span id="fetchProgressText">Takım bilgileri TFF'den çekiliyor...</span>

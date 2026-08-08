@@ -40,6 +40,9 @@ class App {
             matchesFetchProgress: document.getElementById('matchesFetchProgress'),
             fetchProgressText: document.getElementById('fetchProgressText'),
             matchList: document.getElementById('matchList'),
+            selectAllMatches: document.getElementById('selectAllMatches'),
+            scrapeSelectedBtn: document.getElementById('scrapeSelectedBtn'),
+            selectedCountText: document.getElementById('selectedCountText'),
             varEnabled: document.getElementById('varEnabled'),
             startBtn: document.getElementById('startBtn'),
             stopBtn: document.getElementById('stopBtn'),
@@ -175,6 +178,14 @@ class App {
         this.elements.varEnabled.addEventListener('change', () => this.saveSettings());
         if (this.elements.byeEnabled) {
             this.elements.byeEnabled.addEventListener('change', () => this.saveSettings());
+        }
+
+        // Multi-select events
+        if (this.elements.selectAllMatches) {
+            this.elements.selectAllMatches.addEventListener('change', (e) => this.toggleSelectAllMatches(e.target.checked));
+        }
+        if (this.elements.scrapeSelectedBtn) {
+            this.elements.scrapeSelectedBtn.addEventListener('click', () => this.scrapeSelectedMatches());
         }
     }
 
@@ -371,6 +382,9 @@ class App {
             }
 
             item.innerHTML = `
+                <div class="match-item-checkbox-wrapper">
+                    <input type="checkbox" class="match-checkbox match-select-checkbox" data-index="${actualIndex}" data-tff="${match.tffId}" data-mk="${match.mackolikId}">
+                </div>
                 <div class="match-item-main">
                     <span class="match-item-index">#${matchIndexInWeek}</span>
                     <div class="match-item-ids">
@@ -389,6 +403,16 @@ class App {
             `;
             listEl.appendChild(item);
         });
+
+        // Add checkbox listener to update count
+        listEl.querySelectorAll('.match-select-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => this.updateSelectedCount());
+        });
+
+        if (this.elements.selectAllMatches) {
+            this.elements.selectAllMatches.checked = false;
+        }
+        this.updateSelectedCount();
 
         // If there are uncached matches, start fetching sequentially
         if (uncachedMatches.length > 0) {
@@ -558,6 +582,196 @@ class App {
                 btn.innerHTML = '<span>⚡</span> Scrape Et';
             }
         }
+    }
+
+    /**
+     * Toggle selection of all matches in list
+     */
+    toggleSelectAllMatches(checked) {
+        const checkboxes = document.querySelectorAll('.match-select-checkbox');
+        checkboxes.forEach(cb => cb.checked = checked);
+        this.updateSelectedCount();
+    }
+
+    /**
+     * Update selected matches count and button states
+     */
+    updateSelectedCount() {
+        const checkedCount = document.querySelectorAll('.match-select-checkbox:checked').length;
+        const totalCount = document.querySelectorAll('.match-select-checkbox').length;
+
+        if (this.elements.selectedCountText) {
+            this.elements.selectedCountText.textContent = checkedCount;
+        }
+
+        if (this.elements.scrapeSelectedBtn) {
+            this.elements.scrapeSelectedBtn.disabled = checkedCount === 0 || this.isRunning;
+        }
+
+        if (this.elements.selectAllMatches) {
+            this.elements.selectAllMatches.checked = totalCount > 0 && checkedCount === totalCount;
+            this.elements.selectAllMatches.indeterminate = checkedCount > 0 && checkedCount < totalCount;
+        }
+    }
+
+    /**
+     * Scrape multiple selected matches sequentially and combine output
+     */
+    async scrapeSelectedMatches() {
+        if (this.isRunning) return;
+
+        const checkedBoxes = Array.from(document.querySelectorAll('.match-select-checkbox:checked'));
+        if (checkedBoxes.length === 0) {
+            this.showToast('Lütfen en az bir maç seçin', 'warning');
+            return;
+        }
+
+        const selectedItems = checkedBoxes.map(cb => ({
+            actualIndex: parseInt(cb.dataset.index),
+            tffId: cb.dataset.tff,
+            mackolikId: cb.dataset.mk
+        }));
+
+        this.isRunning = true;
+        this.shouldStop = false;
+        this.matchOutputs = [];
+        this.errors = [];
+        this.failedMatches = [];
+
+        // UI Updates
+        this.elements.startBtn.disabled = true;
+        if (this.elements.scrapeSelectedBtn) {
+            this.elements.scrapeSelectedBtn.disabled = true;
+            this.elements.scrapeSelectedBtn.innerHTML = `<span>⏳</span> Scrape Ediliyor (0/${selectedItems.length})...`;
+        }
+        this.elements.progressSection.style.display = 'block';
+        this.elements.outputSection.style.display = 'none';
+
+        const includeVAR = this.elements.varEnabled.checked;
+        const matchesPerWeek = this.selectedLeague.matchesPerWeek;
+        const weeksData = {};
+
+        for (let i = 0; i < selectedItems.length; i++) {
+            if (this.shouldStop) break;
+
+            const item = selectedItems[i];
+            const { actualIndex, tffId, mackolikId } = item;
+            const weekNumber = Math.floor(actualIndex / matchesPerWeek) + 1;
+
+            if (!weeksData[weekNumber]) {
+                weeksData[weekNumber] = { matches: [], teamsPlayed: new Set() };
+            }
+
+            const progress = ((i + 1) / selectedItems.length) * 100;
+            this.updateProgress(progress, i + 1, selectedItems.length);
+            this.elements.currentMatch.textContent = `Seçilen maç işleniyor (${i + 1}/${selectedItems.length}) - TFF=${tffId}`;
+            if (this.elements.scrapeSelectedBtn) {
+                this.elements.scrapeSelectedBtn.innerHTML = `<span>⏳</span> Scrape Ediliyor (${i + 1}/${selectedItems.length})...`;
+            }
+
+            // Update item button UI
+            const itemBtn = document.getElementById(`btn-scrape-${actualIndex}`);
+            if (itemBtn) {
+                itemBtn.disabled = true;
+                itemBtn.innerHTML = '<span>⏳</span>...';
+            }
+
+            try {
+                // Get TFF data
+                let matchObj;
+                if (this.tffCache[tffId] && this.tffCache[tffId].matchObj) {
+                    matchObj = this.tffCache[tffId].matchObj;
+                } else {
+                    matchObj = await this.tffScraper.scrape(tffId);
+                }
+
+                weeksData[weekNumber].teamsPlayed.add(matchObj.homeId);
+                weeksData[weekNumber].teamsPlayed.add(matchObj.awayId);
+
+                // Get Mackolik data
+                let events = { homeGoals: '', awayGoals: '', homeScore: null, awayScore: null };
+                if (mackolikId) {
+                    try {
+                        events = await this.mackolikScraper.getMatchEvents(mackolikId);
+                    } catch (error) {
+                        this.addError(`Maçkolik hatası (${mackolikId}): ${error.message}`);
+                    }
+                }
+
+                if (events.homeScore !== null && events.awayScore !== null) {
+                    matchObj.homeMS = events.homeScore;
+                    matchObj.awayMS = events.awayScore;
+                }
+
+                const matchDetails = await this.wikiFormatter.formatMatch(
+                    matchObj,
+                    this.teams,
+                    events,
+                    weekNumber,
+                    includeVAR
+                );
+
+                const output = matchDetails.getOutput(includeVAR);
+
+                weeksData[weekNumber].matches.push({
+                    tffId,
+                    mackolikId,
+                    output,
+                    mDetail: matchDetails.mDetail,
+                    date: matchObj.date,
+                    hasKnownTime: matchObj.hasKnownTime
+                });
+
+                // Update item UI
+                const itemEl = document.getElementById(`match-item-${actualIndex}`);
+                if (itemEl) itemEl.classList.add('scraped');
+
+                const actionsEl = document.getElementById(`match-actions-${actualIndex}`);
+                if (actionsEl) {
+                    actionsEl.innerHTML = `
+                        <button class="btn btn-sm btn-success" onclick="app.scrapeSingleMatch(${actualIndex}, '${tffId}', '${mackolikId}')">
+                            <span>✅</span> Tekrar Scrape
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="app.copyIndividual('${tffId}')">
+                            <span>📋</span> Kopyala
+                        </button>
+                    `;
+                }
+
+            } catch (error) {
+                console.error(`Seçili maç scrape hatası (${tffId}):`, error);
+                this.addError(`Scrape hatası (${tffId}): ${error.message}`);
+            }
+        }
+
+        // Build combined output
+        let combinedOutput = '';
+        this.matchOutputs = [];
+
+        const sortedWeeks = Object.keys(weeksData).map(Number).sort((a, b) => a - b);
+        for (const w of sortedWeeks) {
+            combinedOutput += `<!-- ${w}. Hafta -->\n`;
+            const wData = weeksData[w];
+            for (const m of wData.matches) {
+                this.matchOutputs.push(m);
+                combinedOutput += m.output + '\n\n';
+            }
+        }
+
+        // Reset state
+        this.isRunning = false;
+        this.elements.startBtn.disabled = false;
+        this.updateSelectedCount();
+
+        this.elements.combinedOutput.value = combinedOutput.trim();
+        this.renderIndividualOutputs();
+        this.elements.outputSection.style.display = 'block';
+
+        this.renderMissingIds();
+        this.renderFailedMatches();
+
+        this.showToast(`${this.matchOutputs.length} seçili maç başarıyla scrape edildi!`, 'success');
+        this.elements.outputSection.scrollIntoView({ behavior: 'smooth' });
     }
 
     /**
