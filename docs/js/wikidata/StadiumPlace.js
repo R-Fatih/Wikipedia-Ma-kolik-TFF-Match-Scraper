@@ -118,14 +118,25 @@ class StadiumPlace {
 
             const sparqlUrl = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
 
-            const response = await fetch(sparqlUrl, {
-                headers: {
-                    'User-Agent': 'WikipediaMatchScraper/1.0',
-                    'Accept': 'application/sparql-results+json'
-                }
-            });
+            let response;
+            let retries = 3;
+            let delay = 1000;
 
-            if (!response.ok) throw new Error(`SPARQL query failed: ${response.status}`);
+            while (retries > 0) {
+                response = await fetch(sparqlUrl, {
+                    headers: {
+                        'User-Agent': 'WikipediaMatchScraper/1.0',
+                        'Accept': 'application/sparql-results+json'
+                    }
+                });
+
+                if (response.ok) break;
+
+                retries--;
+                if (retries === 0) throw new Error(`SPARQL query failed with status ${response.status}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+            }
 
             const data = await response.json();
             const bindings = data?.results?.bindings;

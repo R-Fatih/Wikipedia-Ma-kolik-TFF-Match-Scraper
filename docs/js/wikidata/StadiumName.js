@@ -18,32 +18,53 @@ class StadiumName {
         }
 
         try {
-            // Query Wikidata for entity with TFF stadium ID (P7402)
-            const sparqlQuery = `SELECT ?item WHERE { ?item wdt:P7402 "${id}" . }`;
-            const sparqlUrl = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+            // Use api.php search instead of SPARQL for better performance and rate limit handling
+            const searchUrl = `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=haswbstatement:P7402=${id}&format=json&origin=*`;
 
-            const response = await fetch(sparqlUrl, {
-                headers: {
-                    'User-Agent': 'WikipediaMatchScraper/1.0'
-                }
-            });
+            let response;
+            let retries = 3;
+            let delay = 1000;
 
-            if (!response.ok) throw new Error('SPARQL query failed');
+            while (retries > 0) {
+                response = await fetch(searchUrl, {
+                    headers: { 'User-Agent': 'WikipediaMatchScraper/1.0' }
+                });
+
+                if (response.ok) break;
+
+                retries--;
+                if (retries === 0) throw new Error(`API query failed with status ${response.status}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+            }
 
             const data = await response.json();
 
-            if (!data.results.bindings.length) {
+            if (!data.query || !data.query.search || data.query.search.length === 0) {
                 this.cache.set(id, id.toString());
                 return id.toString();
             }
 
-            const entityUrl = data.results.bindings[0].item.value;
-            const qid = entityUrl.replace('http://www.wikidata.org/entity/', '');
+            const qid = data.query.search[0].title;
 
-            // Get entity details
-            const entityResponse = await fetch(
-                `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&format=json&origin=*`
-            );
+            // Get entity details with retry
+            let entityResponse;
+            retries = 3;
+            delay = 1000;
+
+            while (retries > 0) {
+                entityResponse = await fetch(
+                    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&format=json&origin=*`,
+                    { headers: { 'User-Agent': 'WikipediaMatchScraper/1.0' } }
+                );
+
+                if (entityResponse.ok) break;
+
+                retries--;
+                if (retries === 0) throw new Error(`Entity fetch failed with status ${entityResponse.status}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
 
             if (!entityResponse.ok) throw new Error('Entity fetch failed');
 
